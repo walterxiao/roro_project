@@ -38,9 +38,15 @@
     </div>
     <input type="text" id="nameInput" placeholder="Enter your name" maxlength="16">
     <div id="players"></div>
-    <div id="nextSeeker" style="color:#ff0; font-size:14px; min-height:20px;"></div>
     <button id="startBtn" disabled>Start Game</button>
     <div id="status"></div>
+  </div>
+
+  <!-- Wheel overlay -->
+  <div id="wheelOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.9); z-index:500; flex-direction:column; align-items:center; justify-content:center; gap:20px;">
+    <h2 style="color:#fff; font-size:20px;">Spinning the wheel...</h2>
+    <div id="wheelName" style="font-size:48px; font-weight:800; color:#ff0; padding:20px 40px; border:4px solid #ff0; border-radius:16px; min-width:260px; text-align:center; transition:transform .2s;"></div>
+    <div id="wheelResult" style="color:#0f0; font-size:24px; font-weight:700; min-height:30px;"></div>
   </div>
 
   <!-- GAME CONTAINER (hidden until game starts) -->
@@ -64,7 +70,9 @@
     const startBtn = document.getElementById('startBtn');
     const playersDiv = document.getElementById('players');
     const statusDiv = document.getElementById('status');
-    const nextSeekerDiv = document.getElementById('nextSeeker');
+    const wheelOverlay = document.getElementById('wheelOverlay');
+    const wheelName = document.getElementById('wheelName');
+    const wheelResult = document.getElementById('wheelResult');
 
     let ws, myId = null, myRole = null, gameStarted = false;
     let currentPlayers = [];
@@ -91,10 +99,11 @@
         const msg = JSON.parse(e.data);
         if (msg.type === 'welcome') {
           myId = msg.id;
-          updatePlayers(msg.players, msg.nextSeekerId);
+          updatePlayers(msg.players);
           updateLobbyForPhase(msg.phase);
         }
-        if (msg.type === 'allPlayers') updatePlayers(msg.players, msg.nextSeekerId);
+        if (msg.type === 'allPlayers') updatePlayers(msg.players);
+        if (msg.type === 'wheelSpin') startWheel(msg.players, msg.seekerId, msg.duration);
         if (msg.type === 'phaseChange') {
           if (msg.phase === 'hiding' && !gameStarted) {
             // Everyone present gets a role auto-assigned, so always launch the game
@@ -121,18 +130,13 @@
       ws.onclose = () => { statusDiv.textContent = 'Reconnecting...'; setTimeout(connect, 2000); };
     }
 
-    function updatePlayers(list, nextSeekerId) {
+    function updatePlayers(list) {
       currentPlayers = list;
       playersDiv.innerHTML = list.map(p => {
         if (p.id === myId && p.role) myRole = p.role;
         return p.name + (p.id === myId ? ' (you)' : '');
       }).join('<br>');
       if (!inGameBlocked) startBtn.disabled = list.length < 2;
-      // Show who will be the seeker next
-      if (nextSeekerId != null) {
-        const next = list.find(p => p.id === nextSeekerId);
-        nextSeekerDiv.textContent = next ? 'Next seeker: ' + next.name : '';
-      }
     }
 
     let inGameBlocked = false;
@@ -142,9 +146,40 @@
       inGameBlocked = inGame;
       inGameNotice.style.display = inGame ? 'block' : 'none';
       nameInput.style.display = inGame ? 'none' : 'block';
-      nextSeekerDiv.style.display = inGame ? 'none' : 'block';
       startBtn.style.display = inGame ? 'none' : 'inline-block';
       if (inGame) startBtn.disabled = true;
+    }
+
+    function startWheel(players, seekerId, duration) {
+      wheelOverlay.style.display = 'flex';
+      wheelResult.textContent = '';
+      const names = players.map(p => p.name);
+      const seekerName = (players.find(p => p.id === seekerId) || {}).name || '?';
+      const start = performance.now();
+      let lastIndex = -1;
+
+      function tick(now) {
+        const t = (now - start) / duration; // 0 to 1
+        if (t >= 1) {
+          wheelName.textContent = seekerName;
+          wheelName.style.transform = 'scale(1.3)';
+          wheelResult.textContent = seekerName + ' is the SEEKER!';
+          setTimeout(() => {
+            wheelOverlay.style.display = 'none';
+            wheelName.style.transform = 'scale(1)';
+          }, 1500);
+          return;
+        }
+        // Cycle names rapidly, slow down near the end
+        const speed = 1 - t * t; // quadratic easing out
+        const stepMs = 50 + (1 - speed) * 300;
+        if ((now - start) % stepMs < 20 || lastIndex < 0) {
+          lastIndex = (lastIndex + 1) % names.length;
+          wheelName.textContent = names[lastIndex];
+        }
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
     }
 
     function launchGame() {

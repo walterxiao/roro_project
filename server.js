@@ -18,7 +18,6 @@ const players = new Map();
 let phase = 'lobby';
 let seekerChances = 3;
 let hideCountdown = 0;
-let seekerRotation = 0; // increments each game
 let hideTimer = null;
 let shakeTimer = null;
 let seekTimer = null;
@@ -40,14 +39,8 @@ function pub(p) {
 }
 function allPub() { return [...players.values()].map(pub); }
 
-function getNextSeekerId() {
-  const ids = [...players.keys()].sort((a, b) => a - b);
-  if (ids.length === 0) return null;
-  return ids[seekerRotation % ids.length];
-}
-
 function broadcastPlayers() {
-  broadcast({ type: 'allPlayers', players: allPub(), nextSeekerId: getNextSeekerId() });
+  broadcast({ type: 'allPlayers', players: allPub() });
 }
 
 function endGame(winner, reason) {
@@ -104,7 +97,7 @@ wss.on('connection', (ws) => {
     isHiding: false, hiddenFurniture: -1, isFound: false, ws
   };
   players.set(id, player);
-  send(ws, { type: 'welcome', id, players: allPub(), phase, seekerChances, hideCountdown, nextSeekerId: getNextSeekerId() });
+  send(ws, { type: 'welcome', id, players: allPub(), phase, seekerChances, hideCountdown });
   broadcastPlayers();
 
   ws.on('message', (raw) => {
@@ -126,38 +119,43 @@ wss.on('connection', (ws) => {
     }
     if (msg.type === 'startGame' && phase === 'lobby') {
       if (players.size < 2) return;
-      // Round-robin: assign seeker based on rotation
-      const seekerId = getNextSeekerId();
-      seekerRotation++;
+      // Pick a random seeker
+      const ids = [...players.keys()];
+      const seekerId = ids[Math.floor(Math.random() * ids.length)];
       for (const p of players.values()) {
         p.role = (p.id === seekerId) ? 'seeker' : 'hider';
         p.isHiding = false; p.hiddenFurniture = -1; p.isFound = false;
       }
-      phase = 'hiding'; seekerChances = 3; hideCountdown = HIDE_TIME;
-      // Send role assignments FIRST so clients know their role when phaseChange arrives
-      broadcastPlayers();
-      broadcast({ type: 'phaseChange', phase: 'hiding', hideCountdown, seekerChances });
-      startShakeTimer();
-      hideTimer = setInterval(() => {
-        hideCountdown--;
-        broadcast({ type: 'countdown', hideCountdown });
-        if (hideCountdown <= 0) {
-          clearInterval(hideTimer); hideTimer = null;
-          phase = 'seeking';
-          seekCountdown = SEEK_TIME;
-          broadcast({ type: 'phaseChange', phase: 'seeking', seekerChances, seekCountdown });
-          // Start the 3-minute seek timer
-          seekTimer = setInterval(() => {
-            seekCountdown--;
-            broadcast({ type: 'seekCountdown', seekCountdown });
-            if (seekCountdown <= 0) {
-              clearInterval(seekTimer); seekTimer = null;
-              const anyAlive = [...players.values()].some(p => p.role === 'hider' && !p.isFound);
-              if (anyAlive && phase === 'seeking') endGame('hiders', 'time');
-            }
-          }, 1000);
-        }
-      }, 1000);
+      phase = 'spinning';
+      // Tell everyone to show the wheel animation first
+      broadcast({ type: 'wheelSpin', seekerId, players: allPub(), duration: 3000 });
+      // After the spin animation, start the hiding phase
+      setTimeout(() => {
+        if (phase !== 'spinning') return; // game was reset
+        phase = 'hiding'; seekerChances = 3; hideCountdown = HIDE_TIME;
+        broadcastPlayers();
+        broadcast({ type: 'phaseChange', phase: 'hiding', hideCountdown, seekerChances });
+        startShakeTimer();
+        hideTimer = setInterval(() => {
+          hideCountdown--;
+          broadcast({ type: 'countdown', hideCountdown });
+          if (hideCountdown <= 0) {
+            clearInterval(hideTimer); hideTimer = null;
+            phase = 'seeking';
+            seekCountdown = SEEK_TIME;
+            broadcast({ type: 'phaseChange', phase: 'seeking', seekerChances, seekCountdown });
+            seekTimer = setInterval(() => {
+              seekCountdown--;
+              broadcast({ type: 'seekCountdown', seekCountdown });
+              if (seekCountdown <= 0) {
+                clearInterval(seekTimer); seekTimer = null;
+                const anyAlive = [...players.values()].some(p => p.role === 'hider' && !p.isFound);
+                if (anyAlive && phase === 'seeking') endGame('hiders', 'time');
+              }
+            }, 1000);
+          }
+        }, 1000);
+      }, 3000); // end of setTimeout for wheel spin
     }
     if (msg.type === 'move' && (phase === 'hiding' || phase === 'seeking')) {
       player.pos = msg.pos; player.rot = msg.rot;
