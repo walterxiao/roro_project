@@ -16,6 +16,7 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             cd /home/ec2-user/roro_project
+            git checkout -- . 2>/dev/null; git clean -fd 2>/dev/null
             git pull origin main
             npm install --production
             pm2 restart all || pm2 start server.js --name roro-project
