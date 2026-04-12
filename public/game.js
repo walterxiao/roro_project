@@ -647,10 +647,12 @@ function animate() {
       hiddenIn.group.rotation.z = 0;
     }
 
-    // Bird's-eye camera looking straight down at the room
-    const targetCamPos = new THREE.Vector3(5, 18, 0);
+    // Bird's-eye camera centered on the room the player is hiding in
+    const inDining = hiddenIn.pos.x > ROOM_W / 2;
+    const roomCenterX = inDining ? ROOM_W / 2 + DINING_W / 2 : 0;
+    const targetCamPos = new THREE.Vector3(roomCenterX, 14, 0);
     camera.position.lerp(targetCamPos, 3 * dt);
-    camera.lookAt(5, 0, 0);
+    camera.lookAt(roomCenterX, 0, 0);
   }
 
   // --- NORMAL MOVEMENT (only when not hiding) ---
