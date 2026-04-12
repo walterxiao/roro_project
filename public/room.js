@@ -37,7 +37,10 @@ dFloor.position.set(ROOM_W / 2 + DINING_W / 2, -0.1, 0); dFloor.receiveShadow = 
 const dCeilMat = ceilingMat.clone(); dCeilMat.transparent = true; dCeilMat.opacity = 1;
 const dCeiling = new THREE.Mesh(new THREE.BoxGeometry(DINING_W, 0.2, ROOM_D), dCeilMat);
 dCeiling.position.set(ROOM_W / 2 + DINING_W / 2, ROOM_H + 0.1, 0); scene.add(dCeiling); walls.push(dCeiling);
-addWall(DINING_W, ROOM_H, 0.2, ROOM_W / 2 + DINING_W / 2, ROOM_H / 2, -ROOM_D / 2);
+// Dining back wall split to create a doorway into the garage (opening x=11 to x=14)
+addWall(5, ROOM_H, 0.2, 8.5, ROOM_H / 2, -ROOM_D / 2);      // left segment x=6 to 11
+addWall(2, ROOM_H, 0.2, 15, ROOM_H / 2, -ROOM_D / 2);       // right segment x=14 to 16
+addWall(3, 0.6, 0.2, 12.5, ROOM_H - 0.3, -ROOM_D / 2);      // header above doorway
 addWall(DINING_W, ROOM_H, 0.2, ROOM_W / 2 + DINING_W / 2, ROOM_H / 2, ROOM_D / 2);
 addWall(0.2, ROOM_H, ROOM_D, ROOM_W / 2 + DINING_W, ROOM_H / 2, 0);
 
@@ -71,6 +74,75 @@ function addChair(cx, cz, angle) {
 addChair(tableX-1.2, -1.8, 0); addChair(tableX+1.2, -1.8, 0);
 addChair(tableX-1.2, 1.8, Math.PI); addChair(tableX+1.2, 1.8, Math.PI);
 addChair(tableX-2.9, 0, Math.PI/2); addChair(tableX+2.9, 0, -Math.PI/2);
+
+// ========== GARAGE ==========
+// Behind the dining room (north/negative z). Garage spans x=[8, 16], z=[-13, -5]
+const GARAGE_W = 8, GARAGE_D = 8;
+const GARAGE_X = 12, GARAGE_Z = -9; // center
+const concreteMat = mat(0x6a6a6a);
+
+// Garage floor (darker, concrete-like)
+const gFloor = new THREE.Mesh(new THREE.BoxGeometry(GARAGE_W, 0.2, GARAGE_D), concreteMat);
+gFloor.position.set(GARAGE_X, -0.1, GARAGE_Z); gFloor.receiveShadow = true; scene.add(gFloor);
+
+// Garage ceiling
+const gCeilMat = ceilingMat.clone(); gCeilMat.transparent = true; gCeilMat.opacity = 1;
+const gCeiling = new THREE.Mesh(new THREE.BoxGeometry(GARAGE_W, 0.2, GARAGE_D), gCeilMat);
+gCeiling.position.set(GARAGE_X, ROOM_H + 0.1, GARAGE_Z); scene.add(gCeiling); walls.push(gCeiling);
+
+// Garage walls
+addWall(GARAGE_W, ROOM_H, 0.2, GARAGE_X, ROOM_H / 2, -13); // back
+addWall(0.2, ROOM_H, GARAGE_D, 8, ROOM_H / 2, GARAGE_Z);   // left
+addWall(0.2, ROOM_H, GARAGE_D, 16, ROOM_H / 2, GARAGE_Z);  // right
+// Front wall (shared with dining room back) — segments outside the opening (x=11 to 14)
+// The dining-back wall handles it; no additional front wall needed here.
+
+// Garage light
+const garageLight = new THREE.PointLight(0xffffff, 1.2, 12);
+garageLight.position.set(GARAGE_X, 3.5, GARAGE_Z); garageLight.castShadow = true; scene.add(garageLight);
+
+// ---- CAR ----
+const carGroup = new THREE.Group();
+carGroup.position.set(GARAGE_X + 1, 0, GARAGE_Z - 0.5);
+carGroup.rotation.y = Math.PI; // face the door
+
+const carBodyMat = mat(0xCC2222);
+const carWindowMat = mat(0x222233);
+const wheelMat = mat(0x111111);
+
+// Body (main)
+const carBody = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.5, 4.2), carBodyMat);
+carBody.position.y = 0.5; carBody.castShadow = true; carGroup.add(carBody);
+
+// Cabin (top)
+const carCabin = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.6, 2.2), carBodyMat);
+carCabin.position.set(0, 1.05, 0); carCabin.castShadow = true; carGroup.add(carCabin);
+
+// Windshield (front)
+const windF = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.5, 0.06), carWindowMat);
+windF.position.set(0, 1.1, 1.05); carGroup.add(windF);
+// Rear window
+const windR = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.5, 0.06), carWindowMat);
+windR.position.set(0, 1.1, -1.05); carGroup.add(windR);
+// Side windows
+const windL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.4, 2.0), carWindowMat);
+windL.position.set(-0.88, 1.1, 0); carGroup.add(windL);
+const windSR = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.4, 2.0), carWindowMat);
+windSR.position.set(0.88, 1.1, 0); carGroup.add(windSR);
+
+// Wheels
+const wheelGeo = new THREE.BoxGeometry(0.4, 0.5, 0.5);
+[[-1.0, 0.25, 1.3], [1.0, 0.25, 1.3], [-1.0, 0.25, -1.3], [1.0, 0.25, -1.3]].forEach(([x, y, z]) => {
+  const w = new THREE.Mesh(wheelGeo, wheelMat); w.position.set(x, y, z); w.castShadow = true; carGroup.add(w);
+});
+
+// Headlights
+const headMat = mat(0xffffcc);
+const headL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.06), headMat);
+headL.position.set(-0.6, 0.55, 2.1); carGroup.add(headL);
+const headR = headL.clone(); headR.position.set(0.6, 0.55, 2.1); carGroup.add(headR);
+
+scene.add(carGroup);
 
 // Fireplace
 const brickMat = mat(0x8B3A2A), darkMat = mat(0x1a1a1a);
@@ -127,21 +199,35 @@ const hideables = [
   { group: sofaGroup, pos: sofaGroup.position.clone(), name: 'Sofa' },
   { group: tvGroup, pos: tvGroup.position.clone(), name: 'TV' },
   { group: fpGroup, pos: fpGroup.position.clone(), name: 'Fireplace' },
+  { group: carGroup, pos: carGroup.position.clone(), name: 'Car' },
 ];
 chairGroups.forEach((g, i) => hideables.push({ group: g, pos: g.position.clone(), name: 'Chair ' + (i+1) }));
 
 // Colliders
 const colliders = [
+  // Living room walls (left, front)
   { min: new THREE.Vector3(-ROOM_W/2, 0, -ROOM_D/2), max: new THREE.Vector3(-ROOM_W/2+.3, ROOM_H, ROOM_D/2) },
-  { min: new THREE.Vector3(-ROOM_W/2, 0, -ROOM_D/2), max: new THREE.Vector3(ROOM_W/2+DINING_W, ROOM_H, -ROOM_D/2+.3) },
   { min: new THREE.Vector3(-ROOM_W/2, 0, ROOM_D/2-.3), max: new THREE.Vector3(ROOM_W/2+DINING_W, ROOM_H, ROOM_D/2) },
+  // Living room back wall only
+  { min: new THREE.Vector3(-ROOM_W/2, 0, -ROOM_D/2), max: new THREE.Vector3(ROOM_W/2, ROOM_H, -ROOM_D/2+.3) },
+  // Dining back wall segments (opening to garage at x=11 to 14)
+  { min: new THREE.Vector3(ROOM_W/2, 0, -ROOM_D/2), max: new THREE.Vector3(11, ROOM_H, -ROOM_D/2+.3) },
+  { min: new THREE.Vector3(14, 0, -ROOM_D/2), max: new THREE.Vector3(ROOM_W/2+DINING_W, ROOM_H, -ROOM_D/2+.3) },
+  // Living-dining passage walls
   { min: new THREE.Vector3(ROOM_W/2-.3, 0, -ROOM_D/2), max: new THREE.Vector3(ROOM_W/2, ROOM_H, -2) },
   { min: new THREE.Vector3(ROOM_W/2-.3, 0, 2), max: new THREE.Vector3(ROOM_W/2, ROOM_H, ROOM_D/2) },
   { min: new THREE.Vector3(ROOM_W/2+DINING_W-.3, 0, -ROOM_D/2), max: new THREE.Vector3(ROOM_W/2+DINING_W, ROOM_H, ROOM_D/2) },
+  // Garage walls
+  { min: new THREE.Vector3(8, 0, -13), max: new THREE.Vector3(16, ROOM_H, -13+.3) },          // back
+  { min: new THREE.Vector3(8, 0, -13), max: new THREE.Vector3(8+.3, ROOM_H, -5) },             // left
+  { min: new THREE.Vector3(16-.3, 0, -13), max: new THREE.Vector3(16, ROOM_H, -5) },           // right
+  // Fireplace, TV, sofa, table
   { min: new THREE.Vector3(-1.3, 0, -5), max: new THREE.Vector3(1.3, 2.4, -4.5) },
   { min: new THREE.Vector3(3.3, 0, -3.8), max: new THREE.Vector3(5.7, 2.3, -3.2) },
   { min: new THREE.Vector3(-.8, 0, -.2), max: new THREE.Vector3(2.8, 1.2, 2) },
   { min: new THREE.Vector3(tableX-2.4, 0, -1.3), max: new THREE.Vector3(tableX+2.4, 1, 1.3) },
+  // Car
+  { min: new THREE.Vector3(11.8, 0, -12), max: new THREE.Vector3(14.2, 1.5, -7.5) },
   ...chairColliders,
 ];
 
