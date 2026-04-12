@@ -5,18 +5,20 @@ import { getInput } from './controls.js';
 import { send, getMyId, getMyRole, setOnMessage, showToast } from './network.js';
 
 // ========== STATE ==========
-const MOVE_SPEED = 4, TURN_SPEED = 3, HIDE_RANGE = 2.5;
-const SHAKE_INTERVAL = 10, SHAKE_DURATION = 1;
+const MOVE_SPEED = 4, TURN_SPEED = 3, HIDE_RANGE = 2.5, CATCH_RANGE = 1.5;
 
 let myChar = null;
 const charPos = new THREE.Vector3(0, 0, 2);
 let charRotY = 0;
 let phase = 'lobby';
-let isHiding = false, hiddenIn = null, hideTimer = 0;
+let isHiding = false, hiddenIn = null;
 let nearestHideable = null;
 
+// Shake state: { furnitureIndex -> remaining seconds }
+const shaking = new Map();
+
 // Remote players
-const remotePlayers = new Map(); // id -> { char, pos, rot, targetPos, targetRot }
+const remotePlayers = new Map(); // id -> { char, pos, rot, targetPos, targetRot, hiddenFi }
 
 // UI elements
 const hideBtn = document.getElementById('hideBtn');
@@ -49,8 +51,7 @@ function onActionBtn() {
   const role = getMyRole();
   if (role === 'hider') {
     if (isHiding) {
-      // Unhide (only during hiding phase)
-      if (phase !== 'hiding') return;
+      // Unhide (allowed in both phases)
       isHiding = false;
       myChar.group.visible = true;
       hiddenIn.group.position.copy(hiddenIn.pos);
@@ -60,12 +61,11 @@ function onActionBtn() {
       hideBtn.textContent = 'HIDE';
       hideZone.classList.remove('visible');
       send({ type: 'unhide' });
-    } else if (nearestHideable && phase === 'hiding') {
-      // Hide
+    } else if (nearestHideable) {
+      // Hide (allowed in both hiding and seeking phases)
       clearHighlight(nearestHideable);
       isHiding = true;
       hiddenIn = nearestHideable;
-      hideTimer = 0;
       myChar.group.visible = false;
       hideBtn.textContent = 'UNHIDE';
       hideZone.classList.add('visible');
@@ -111,12 +111,35 @@ setOnMessage((msg) => {
 
   if (msg.type === 'playerHid') {
     const rp = remotePlayers.get(msg.id);
-    if (rp) rp.char.group.visible = false;
+    if (rp) { rp.char.group.visible = false; rp.hiddenFi = msg.furnitureIndex; }
   }
 
   if (msg.type === 'playerUnhid') {
     const rp = remotePlayers.get(msg.id);
-    if (rp) { rp.char.group.visible = true; }
+    if (rp) {
+      rp.char.group.visible = true; rp.hiddenFi = -1;
+      if (msg.pos) { rp.targetPos.set(msg.pos.x, 0, msg.pos.z); rp.char.group.position.copy(rp.targetPos); }
+    }
+  }
+
+  if (msg.type === 'shake') {
+    // Trigger shake animation on listed furniture for everyone
+    for (const fi of msg.furnitureIndices) {
+      shaking.set(fi, 1.0); // 1 second of shake
+    }
+  }
+
+  if (msg.type === 'hiderCaught') {
+    const rp = remotePlayers.get(msg.hiderId);
+    if (rp) rp.char.group.visible = false;
+    if (msg.hiderId === getMyId()) {
+      // We were caught
+      isHiding = false;
+      if (myChar) myChar.group.visible = false;
+      if (hiddenIn) { hiddenIn.group.position.copy(hiddenIn.pos); hiddenIn.group.rotation.z = 0; }
+      hiddenIn = null;
+      hideZone.classList.remove('visible');
+    }
   }
 
   if (msg.type === 'phaseChange') {
@@ -198,24 +221,28 @@ function animate() {
   if (!myChar) { renderer.render(scene, camera); return; }
 
   const role = getMyRole();
-  const canMove = (phase === 'hiding' && role === 'hider') ||
-                  (phase === 'hiding' && role === 'seeker') ||
-                  (phase === 'seeking' && role === 'seeker');
-  // Seeker is blindfolded during hiding phase — no movement
+  // Seeker is fully blindfolded during hiding phase — no movement, no rendering
   const seekerBlind = phase === 'hiding' && role === 'seeker';
+  // Hiders can move during both hiding and seeking phases (if not hidden)
+  // Seekers can move during seeking phase
+  const canMove = (role === 'hider' && (phase === 'hiding' || phase === 'seeking')) ||
+                  (role === 'seeker' && phase === 'seeking');
 
-  // --- HIDING SHAKE ---
-  if (isHiding && hiddenIn) {
-    hideTimer += dt;
-    const cycle = hideTimer % SHAKE_INTERVAL;
-    if (cycle < SHAKE_DURATION) {
-      hiddenIn.group.position.x = hiddenIn.pos.x + Math.sin(hideTimer * 30) * .04;
-      hiddenIn.group.position.z = hiddenIn.pos.z + Math.cos(hideTimer * 39) * .04;
-      hiddenIn.group.rotation.z = Math.sin(hideTimer * 21) * .02;
-    } else {
-      hiddenIn.group.position.x = hiddenIn.pos.x;
-      hiddenIn.group.position.z = hiddenIn.pos.z;
-      hiddenIn.group.rotation.z = 0;
+  // --- SHAKING FURNITURE (server-driven) ---
+  const t = clock.elapsedTime;
+  for (const h of hideables) {
+    const fi = hideables.indexOf(h);
+    const remaining = shaking.get(fi);
+    if (remaining > 0) {
+      h.group.position.x = h.pos.x + Math.sin(t * 30) * .04;
+      h.group.position.z = h.pos.z + Math.cos(t * 39) * .04;
+      h.group.rotation.z = Math.sin(t * 21) * .02;
+      shaking.set(fi, remaining - dt);
+    } else if (shaking.has(fi)) {
+      h.group.position.x = h.pos.x;
+      h.group.position.z = h.pos.z;
+      h.group.rotation.z = 0;
+      shaking.delete(fi);
     }
   }
 
@@ -237,6 +264,19 @@ function animate() {
     // Broadcast position
     sendTimer += dt;
     if (sendTimer > .05) { sendTimer = 0; send({ type: 'move', pos: { x: charPos.x, z: charPos.z }, rot: charRotY }); }
+
+    // --- CATCH-BY-TOUCH (seeker only, seeking phase) ---
+    if (role === 'seeker' && phase === 'seeking') {
+      for (const [id, rp] of remotePlayers) {
+        if (!rp.char.group.visible) continue;
+        const dx = charPos.x - rp.char.group.position.x;
+        const dz = charPos.z - rp.char.group.position.z;
+        if (dx * dx + dz * dz < CATCH_RANGE * CATCH_RANGE) {
+          send({ type: 'catch', hiderId: id });
+          break;
+        }
+      }
+    }
   }
   animateWalk(myChar, dt, isMoving);
 
@@ -252,7 +292,8 @@ function animate() {
     }
     if (prev && prev !== nearestHideable) clearHighlight(prev);
 
-    const showBtn = (role === 'hider' && phase === 'hiding' && nearestHideable) ||
+    // Hiders can hide in BOTH phases, seekers can search in seeking phase
+    const showBtn = (role === 'hider' && nearestHideable) ||
                     (role === 'seeker' && phase === 'seeking' && nearestHideable);
     if (nearestHideable && showBtn) {
       nearestHideable.group.traverse((c) => { if (c.isMesh) c.material.emissive?.setHex(0x444400); });
@@ -311,7 +352,6 @@ function animate() {
   }
 
   // --- FIRE + TV ---
-  const t = clock.elapsedTime;
   fireParts.forEach((fp) => {
     fp.mesh.position.y = fp.baseY + Math.sin(t * fp.speed + fp.offset) * .15;
     fp.mesh.scale.x = .8 + Math.sin(t * fp.speed * 1.3 + fp.offset) * .3;

@@ -15,11 +15,13 @@ const wss = new WebSocketServer({ server });
 // ========== GAME STATE ==========
 let nextId = 1;
 const players = new Map();
-let phase = 'lobby'; // lobby | hiding | seeking | gameover
+let phase = 'lobby';
 let seekerChances = 3;
 let hideCountdown = 0;
 let hideTimer = null;
+let shakeTimer = null;
 const HIDE_TIME = 20;
+const SHAKE_INTERVAL = 10000; // ms
 
 function broadcast(msg, excludeId) {
   const data = JSON.stringify(msg);
@@ -53,11 +55,26 @@ function checkGameOver() {
 function resetGame() {
   phase = 'lobby'; seekerChances = 3; hideCountdown = 0;
   if (hideTimer) { clearInterval(hideTimer); hideTimer = null; }
+  if (shakeTimer) { clearInterval(shakeTimer); shakeTimer = null; }
   for (const p of players.values()) {
     p.role = null; p.isHiding = false; p.hiddenFurniture = -1; p.isFound = false;
     p.pos = { x: 0, z: 2 }; p.rot = 0;
   }
   broadcast({ type: 'reset', players: allPub() });
+}
+
+function startShakeTimer() {
+  if (shakeTimer) return;
+  shakeTimer = setInterval(() => {
+    // Find all furniture currently hiding someone
+    const occupied = new Set();
+    for (const p of players.values()) {
+      if (p.role === 'hider' && p.isHiding && !p.isFound) occupied.add(p.hiddenFurniture);
+    }
+    if (occupied.size > 0) {
+      broadcast({ type: 'shake', furnitureIndices: [...occupied] });
+    }
+  }, SHAKE_INTERVAL);
 }
 
 wss.on('connection', (ws) => {
@@ -93,6 +110,7 @@ wss.on('connection', (ws) => {
       phase = 'hiding'; seekerChances = 3; hideCountdown = HIDE_TIME;
       for (const p of players.values()) { p.isHiding = false; p.hiddenFurniture = -1; p.isFound = false; }
       broadcast({ type: 'phaseChange', phase: 'hiding', hideCountdown, seekerChances });
+      startShakeTimer();
       hideTimer = setInterval(() => {
         hideCountdown--;
         broadcast({ type: 'countdown', hideCountdown });
@@ -107,11 +125,12 @@ wss.on('connection', (ws) => {
       player.pos = msg.pos; player.rot = msg.rot;
       broadcast({ type: 'playerMoved', id, pos: msg.pos, rot: msg.rot }, id);
     }
-    if (msg.type === 'hide' && player.role === 'hider' && phase === 'hiding') {
+    // Hide and unhide allowed in both hiding and seeking phases
+    if (msg.type === 'hide' && player.role === 'hider' && (phase === 'hiding' || phase === 'seeking') && !player.isFound) {
       player.isHiding = true; player.hiddenFurniture = msg.furnitureIndex;
-      broadcast({ type: 'playerHid', id });
+      broadcast({ type: 'playerHid', id, furnitureIndex: msg.furnitureIndex });
     }
-    if (msg.type === 'unhide' && player.role === 'hider' && phase === 'hiding') {
+    if (msg.type === 'unhide' && player.role === 'hider' && (phase === 'hiding' || phase === 'seeking') && !player.isFound) {
       player.isHiding = false; player.hiddenFurniture = -1;
       broadcast({ type: 'playerUnhid', id, pos: player.pos });
     }
@@ -126,6 +145,19 @@ wss.on('connection', (ws) => {
         broadcast({ type: 'searchResult', furnitureIndex: fi, found: false, seekerChances });
       }
       checkGameOver();
+    }
+    // Catch a visible hider by touching (proximity-based, validated on server)
+    if (msg.type === 'catch' && player.role === 'seeker' && phase === 'seeking') {
+      const target = players.get(msg.hiderId);
+      if (target && target.role === 'hider' && !target.isFound && !target.isHiding) {
+        const dx = target.pos.x - player.pos.x;
+        const dz = target.pos.z - player.pos.z;
+        if (dx*dx + dz*dz < 1.5*1.5) {
+          target.isFound = true;
+          broadcast({ type: 'hiderCaught', hiderId: target.id, hiderName: target.name });
+          checkGameOver();
+        }
+      }
     }
     if (msg.type === 'resetGame') resetGame();
   });

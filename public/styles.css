@@ -16,10 +16,10 @@ html,body { width:100%; height:100%; overflow:hidden; background:#000; touch-act
 #hideBtn.search-mode { border-color:rgba(255,80,80,.7); background:rgba(255,80,80,.25); }
 #hideBtn.search-mode:active { background:rgba(255,80,80,.5); }
 
-/* Blindfold */
-#blindfold { position:absolute; inset:0; background:rgba(0,0,0,.95); display:flex; align-items:center; justify-content:center; pointer-events:auto; }
-#blindfoldInner { color:#fff; font-size:24px; text-align:center; line-height:1.6; }
-#bfTimer { font-size:48px; font-weight:700; }
+/* Blindfold — fully covers everything including canvas */
+#blindfold { position:fixed; inset:0; background:#000; display:flex; align-items:center; justify-content:center; pointer-events:auto; z-index:150; }
+#blindfoldInner { color:#fff; font-size:22px; text-align:center; line-height:1.6; padding:20px; }
+#bfTimer { font-size:56px; font-weight:700; color:#ff0; display:block; margin-top:12px; }
 
 /* Game over */
 #gameOverScreen { position:fixed; inset:0; background:rgba(0,0,0,.8); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; z-index:200; }
