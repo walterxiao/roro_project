@@ -649,8 +649,15 @@ function animate() {
 
     // Bird's-eye camera centered on the room the player is hiding in
     const inDining = hiddenIn.pos.x > ROOM_W / 2;
+    const roomW = inDining ? DINING_W : ROOM_W;
     const roomCenterX = inDining ? ROOM_W / 2 + DINING_W / 2 : 0;
-    const targetCamPos = new THREE.Vector3(roomCenterX, 14, 0);
+    // Calculate height needed to fit the full room in view
+    const aspect = camera.aspect;
+    const fovRad = (camera.fov / 2) * Math.PI / 180;
+    const needH = (ROOM_D / 2) / Math.tan(fovRad);          // fit depth
+    const needW = (roomW / 2) / (Math.tan(fovRad) * aspect); // fit width
+    const camY = Math.max(needH, needW) + 2; // +2 padding
+    const targetCamPos = new THREE.Vector3(roomCenterX, camY, 0);
     camera.position.lerp(targetCamPos, 3 * dt);
     camera.lookAt(roomCenterX, 0, 0);
   }
