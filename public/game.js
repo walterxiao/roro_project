@@ -189,8 +189,13 @@ setOnMessage((msg) => {
 
   if (msg.type === 'reset') {
     phase = 'lobby'; isHiding = false; hiddenIn = null;
+    nearestHideable = null;
+    shaking.clear();
+    charPos.set(0, 0, 2); charRotY = 0;
     hideZone.classList.remove('visible');
-    // Reset all furniture positions
+    hideBtn.textContent = 'HIDE';
+    hideBtn.classList.remove('search-mode');
+    // Reset all furniture positions + highlights
     for (const h of hideables) { h.group.position.copy(h.pos); h.group.rotation.z = 0; clearHighlight(h); }
     // Remove remote players
     for (const [id, rp] of remotePlayers) scene.remove(rp.char.group);

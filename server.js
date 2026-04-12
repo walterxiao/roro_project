@@ -39,12 +39,16 @@ function pub(p) {
 }
 function allPub() { return [...players.values()].map(pub); }
 
-function endGame(winner) {
+function endGame(winner, reason) {
   phase = 'gameover';
   if (hideTimer) { clearInterval(hideTimer); hideTimer = null; }
   if (shakeTimer) { clearInterval(shakeTimer); shakeTimer = null; }
   if (seekTimer) { clearInterval(seekTimer); seekTimer = null; }
-  broadcast({ type: 'gameOver', winner });
+  broadcast({ type: 'gameOver', winner, reason });
+  // Auto-reset to lobby after 6 seconds so winner screen is visible
+  setTimeout(() => {
+    if (phase === 'gameover') resetGame();
+  }, 6000);
 }
 
 function checkGameOver() {
@@ -129,13 +133,8 @@ wss.on('connection', (ws) => {
             broadcast({ type: 'seekCountdown', seekCountdown });
             if (seekCountdown <= 0) {
               clearInterval(seekTimer); seekTimer = null;
-              // Hiders win if any remain
               const anyAlive = [...players.values()].some(p => p.role === 'hider' && !p.isFound);
-              if (anyAlive && phase === 'seeking') {
-                phase = 'gameover';
-                if (shakeTimer) { clearInterval(shakeTimer); shakeTimer = null; }
-                broadcast({ type: 'gameOver', winner: 'hiders', reason: 'time' });
-              }
+              if (anyAlive && phase === 'seeking') endGame('hiders', 'time');
             }
           }, 1000);
         }
@@ -188,9 +187,7 @@ wss.on('connection', (ws) => {
     broadcast({ type: 'playerLeft', id });
     if (players.size === 0) { resetGame(); return; }
     if ((phase === 'hiding' || phase === 'seeking') && wasSeeker) {
-      phase = 'gameover';
-      if (hideTimer) { clearInterval(hideTimer); hideTimer = null; }
-      broadcast({ type: 'gameOver', winner: 'hiders' });
+      endGame('hiders', 'seeker-left');
     } else if (phase === 'seeking' || phase === 'hiding') { checkGameOver(); }
   });
 });

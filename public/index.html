@@ -55,7 +55,7 @@
       <div id="hideZone"><button id="hideBtn">HIDE</button></div>
       <div id="blindfold" class="hidden"><div id="blindfoldInner">Waiting for hiders to hide<span id="bfTimer"></span></div></div>
     </div>
-    <div id="gameOverScreen" class="hidden"><h1 id="winnerText"></h1><button id="btnAgain">Play Again</button></div>
+    <div id="gameOverScreen" class="hidden"><h1 id="winnerText"></h1><div id="gameOverSubtitle" style="color:#aaa; font-size:14px;"></div></div>
     <div id="toast" class="hidden"></div>
   </div>
 
@@ -110,6 +110,10 @@
           gameWrap.classList.remove('active');
           lobby.style.display = 'flex';
           document.body.style.background = '#1a1a2e';
+          // Clear local role + button states (keep name)
+          myRole = null;
+          seekerBtn.classList.remove('seeker-on');
+          hiderBtn.classList.remove('hider-on');
           updateLobbyForPhase('lobby');
         }
         // Forward to game module if loaded

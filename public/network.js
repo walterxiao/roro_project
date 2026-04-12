@@ -7,7 +7,6 @@ const blindfold = document.getElementById('blindfold');
 const bfTimer = document.getElementById('bfTimer');
 const gameOverScreen = document.getElementById('gameOverScreen');
 const winnerText = document.getElementById('winnerText');
-const btnAgain = document.getElementById('btnAgain');
 const toast = document.getElementById('toast');
 
 let toastTimeout = null;
@@ -28,6 +27,7 @@ window.__roroOnMsg = (msg) => {
       phaseText.textContent = 'Hiding phase';
       chancesText.textContent = 'Chances: ' + msg.seekerChances;
       gameOverScreen.classList.add('hidden');
+      if (msg.hideCountdown != null) bfTimer.textContent = msg.hideCountdown;
       if (roro.getRole() === 'seeker') blindfold.classList.remove('hidden');
       else blindfold.classList.add('hidden');
     }
@@ -56,14 +56,17 @@ window.__roroOnMsg = (msg) => {
     gameOverScreen.classList.remove('hidden');
     let txt = msg.winner === 'seeker' ? 'Seeker wins!' : 'Hiders win!';
     if (msg.reason === 'time') txt += ' (time ran out)';
+    if (msg.reason === 'seeker-left') txt += ' (seeker left)';
     winnerText.textContent = txt;
+    // Show a subtitle with auto-reset info
+    const sub = document.getElementById('gameOverSubtitle');
+    if (sub) sub.textContent = 'Returning to lobby in a few seconds...';
   }
 
   // Forward to game.js handler
   gameHandler(msg);
 };
 
-btnAgain.addEventListener('click', () => send({ type: 'resetGame' }));
 
 export { send, showToast };
 export function getMyId() { return roro.getId(); }
