@@ -20,7 +20,10 @@ let seekerChances = 3;
 let hideCountdown = 0;
 let hideTimer = null;
 let shakeTimer = null;
+let seekTimer = null;
+let seekCountdown = 0;
 const HIDE_TIME = 20;
+const SEEK_TIME = 180; // 3 minutes
 const SHAKE_INTERVAL = 10000; // ms
 
 function broadcast(msg, excludeId) {
@@ -36,26 +39,27 @@ function pub(p) {
 }
 function allPub() { return [...players.values()].map(pub); }
 
+function endGame(winner) {
+  phase = 'gameover';
+  if (hideTimer) { clearInterval(hideTimer); hideTimer = null; }
+  if (shakeTimer) { clearInterval(shakeTimer); shakeTimer = null; }
+  if (seekTimer) { clearInterval(seekTimer); seekTimer = null; }
+  broadcast({ type: 'gameOver', winner });
+}
+
 function checkGameOver() {
   const hiders = [...players.values()].filter(p => p.role === 'hider');
   const alive = hiders.filter(p => !p.isFound);
-  if (alive.length === 0 && hiders.length > 0) {
-    phase = 'gameover';
-    broadcast({ type: 'gameOver', winner: 'seeker' });
-    return true;
-  }
-  if (seekerChances <= 0 && alive.length > 0) {
-    phase = 'gameover';
-    broadcast({ type: 'gameOver', winner: 'hiders' });
-    return true;
-  }
+  if (alive.length === 0 && hiders.length > 0) { endGame('seeker'); return true; }
+  if (seekerChances <= 0 && alive.length > 0) { endGame('hiders'); return true; }
   return false;
 }
 
 function resetGame() {
-  phase = 'lobby'; seekerChances = 3; hideCountdown = 0;
+  phase = 'lobby'; seekerChances = 3; hideCountdown = 0; seekCountdown = 0;
   if (hideTimer) { clearInterval(hideTimer); hideTimer = null; }
   if (shakeTimer) { clearInterval(shakeTimer); shakeTimer = null; }
+  if (seekTimer) { clearInterval(seekTimer); seekTimer = null; }
   for (const p of players.values()) {
     p.role = null; p.isHiding = false; p.hiddenFurniture = -1; p.isFound = false;
     p.pos = { x: 0, z: 2 }; p.rot = 0;
@@ -117,7 +121,23 @@ wss.on('connection', (ws) => {
         if (hideCountdown <= 0) {
           clearInterval(hideTimer); hideTimer = null;
           phase = 'seeking';
-          broadcast({ type: 'phaseChange', phase: 'seeking', seekerChances });
+          seekCountdown = SEEK_TIME;
+          broadcast({ type: 'phaseChange', phase: 'seeking', seekerChances, seekCountdown });
+          // Start the 3-minute seek timer
+          seekTimer = setInterval(() => {
+            seekCountdown--;
+            broadcast({ type: 'seekCountdown', seekCountdown });
+            if (seekCountdown <= 0) {
+              clearInterval(seekTimer); seekTimer = null;
+              // Hiders win if any remain
+              const anyAlive = [...players.values()].some(p => p.role === 'hider' && !p.isFound);
+              if (anyAlive && phase === 'seeking') {
+                phase = 'gameover';
+                if (shakeTimer) { clearInterval(shakeTimer); shakeTimer = null; }
+                broadcast({ type: 'gameOver', winner: 'hiders', reason: 'time' });
+              }
+            }
+          }, 1000);
         }
       }, 1000);
     }

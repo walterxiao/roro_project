@@ -33,9 +33,14 @@ window.__roroOnMsg = (msg) => {
     }
     if (msg.phase === 'seeking') {
       blindfold.classList.add('hidden');
-      phaseText.textContent = 'Seeking phase';
+      phaseText.textContent = 'Seeking — 3:00';
       chancesText.textContent = 'Chances: ' + msg.seekerChances;
     }
+  }
+  if (msg.type === 'seekCountdown') {
+    const m = Math.floor(msg.seekCountdown / 60);
+    const s = (msg.seekCountdown % 60).toString().padStart(2, '0');
+    phaseText.textContent = 'Seeking — ' + m + ':' + s;
   }
   if (msg.type === 'countdown') {
     bfTimer.textContent = msg.hideCountdown;
@@ -49,7 +54,9 @@ window.__roroOnMsg = (msg) => {
   if (msg.type === 'youWereFound') showToast('You were found!');
   if (msg.type === 'gameOver') {
     gameOverScreen.classList.remove('hidden');
-    winnerText.textContent = msg.winner === 'seeker' ? 'Seeker wins!' : 'Hiders win!';
+    let txt = msg.winner === 'seeker' ? 'Seeker wins!' : 'Hiders win!';
+    if (msg.reason === 'time') txt += ' (time ran out)';
+    winnerText.textContent = txt;
   }
 
   // Forward to game.js handler

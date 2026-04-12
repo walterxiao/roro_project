@@ -33,6 +33,9 @@
   <div id="lobby">
     <h1>RoRo Hide &amp; Seek</h1>
     <h2>Multiplayer</h2>
+    <div id="inGameNotice" style="display:none; color:#f80; font-size:16px; text-align:center; padding:20px; border:2px solid #f80; border-radius:12px;">
+      Game in progress.<br>Please wait for it to end.
+    </div>
     <input type="text" id="nameInput" placeholder="Enter your name" maxlength="16">
     <div class="role-row">
       <button class="role-btn" id="seekerBtn">Seeker</button>
@@ -84,14 +87,30 @@
       };
       ws.onmessage = (e) => {
         const msg = JSON.parse(e.data);
-        if (msg.type === 'welcome') { myId = msg.id; updatePlayers(msg.players); }
+        if (msg.type === 'welcome') {
+          myId = msg.id;
+          updatePlayers(msg.players);
+          updateLobbyForPhase(msg.phase);
+        }
         if (msg.type === 'allPlayers') updatePlayers(msg.players);
-        if (msg.type === 'phaseChange' && msg.phase === 'hiding' && !gameStarted) launchGame();
+        if (msg.type === 'phaseChange') {
+          if (msg.phase === 'hiding' && !gameStarted) {
+            // If we already picked a role, launch game. Otherwise stay in lobby with notice.
+            if (myRole) launchGame();
+            else updateLobbyForPhase('hiding');
+          } else {
+            updateLobbyForPhase(msg.phase);
+          }
+        }
+        if (msg.type === 'gameOver') {
+          updateLobbyForPhase('gameover');
+        }
         if (msg.type === 'reset') {
           gameStarted = false;
           gameWrap.classList.remove('active');
           lobby.style.display = 'flex';
           document.body.style.background = '#1a1a2e';
+          updateLobbyForPhase('lobby');
         }
         // Forward to game module if loaded
         if (window.__roroOnMsg) window.__roroOnMsg(msg);
@@ -108,7 +127,20 @@
         if (p.id === myId && p.role) myRole = p.role;
         return p.name + (p.role ? ' [' + p.role + ']' : '') + (p.id === myId ? ' (you)' : '');
       }).join('<br>');
-      startBtn.disabled = !(hasSeeker && hasHider);
+      if (!inGameBlocked) startBtn.disabled = !(hasSeeker && hasHider);
+    }
+
+    let inGameBlocked = false;
+    const inGameNotice = document.getElementById('inGameNotice');
+    function updateLobbyForPhase(ph) {
+      const inGame = (ph === 'hiding' || ph === 'seeking');
+      inGameBlocked = inGame;
+      inGameNotice.style.display = inGame ? 'block' : 'none';
+      nameInput.style.display = inGame ? 'none' : 'block';
+      seekerBtn.style.display = inGame ? 'none' : 'inline-block';
+      hiderBtn.style.display = inGame ? 'none' : 'inline-block';
+      startBtn.style.display = inGame ? 'none' : 'inline-block';
+      if (inGame) startBtn.disabled = true;
     }
 
     function launchGame() {
