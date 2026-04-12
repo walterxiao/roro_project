@@ -92,7 +92,7 @@ function startProxShakeTimer() {
       const dx = seeker.pos.x - p.pos.x, dz = seeker.pos.z - p.pos.z;
       const dist = Math.sqrt(dx * dx + dz * dz);
       if (dist < PROX_RANGE) {
-        const chance = 0.6 * (1 - dist / PROX_RANGE);
+        const chance = 0.9 * (1 - dist / PROX_RANGE);
         if (Math.random() < chance) occupied.add(p.hiddenFurniture);
       }
     }
