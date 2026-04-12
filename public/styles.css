@@ -1,7 +1,7 @@
 * { margin:0; padding:0; box-sizing:border-box; }
 html,body { width:100%; height:100%; overflow:hidden; background:#000; touch-action:none; -webkit-user-select:none; user-select:none; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; }
 .hidden { display:none !important; }
-#gameCanvas { display:block; width:100%; height:100%; }
+#gameCanvas { display:block; width:100%; height:100%; position:relative; z-index:0; }
 
 /* LOBBY */
 #lobby { position:fixed; inset:0; background:rgba(0,0,0,.85); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; z-index:100; }

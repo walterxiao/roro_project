@@ -93,13 +93,11 @@ let colorIdx = 0;
 setOnMessage((msg) => {
   if (msg.type === 'welcome') {
     colorIdx = msg.id % 6;
-    myChar = createCharacter(colorIdx);
-    myChar.group.position.copy(charPos);
-    // Create existing players
+    phase = msg.phase;
+    // Don't create character yet — wait for game to start
     for (const p of msg.players) {
       if (p.id !== msg.id) addRemotePlayer(p);
     }
-    phase = msg.phase;
   }
 
   if (msg.type === 'playerJoined') addRemotePlayer(msg.player);
@@ -129,7 +127,9 @@ setOnMessage((msg) => {
     if (phase === 'hiding') {
       isHiding = false; hiddenIn = null;
       charPos.set(0, 0, 2); charRotY = 0;
-      if (myChar) { myChar.group.visible = true; myChar.group.position.copy(charPos); }
+      if (!myChar) myChar = createCharacter(colorIdx);
+      myChar.group.visible = true;
+      myChar.group.position.copy(charPos);
     }
     if (phase === 'seeking' && getMyRole() === 'hider' && isHiding) {
       // Stay hidden, switch to bird's-eye
