@@ -22,9 +22,9 @@ let hideTimer = null;
 let shakeTimer = null;
 let seekTimer = null;
 let seekCountdown = 0;
-const HIDE_TIME = 20;
+const HIDE_TIME = 30;
 const SEEK_TIME = 180; // 3 minutes
-const SHAKE_INTERVAL = 10000; // ms
+const SHAKE_INTERVAL = 30000; // ms
 
 function broadcast(msg, excludeId) {
   const data = JSON.stringify(msg);
