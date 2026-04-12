@@ -60,38 +60,11 @@ html, body {
   transition: none;
 }
 
-/* Jump button – lower-right */
-#jumpZone {
-  position: absolute;
-  bottom: 30px;
-  right: 30px;
-  pointer-events: auto;
-}
-
-#jumpBtn {
-  width: 90px;
-  height: 90px;
-  border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-#jumpBtn:active {
-  background: rgba(255, 255, 255, 0.35);
-}
-
-/* Hide button – bottom center, hidden by default */
+/* Hide button – lower-right, hidden by default */
 #hideZone {
   position: absolute;
   bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 30px;
   pointer-events: auto;
   display: none;
 }

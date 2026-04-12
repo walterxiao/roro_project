@@ -450,12 +450,8 @@ charGroup.add(legMeshR);
 // Character state
 const charPos = new THREE.Vector3(0, 0, 2);
 let charRotY = 0;
-let velY = 0;
-const GRAVITY = -15;
-const JUMP_VEL = 6;
 const MOVE_SPEED = 4;
 const TURN_SPEED = 3;
-let isGrounded = true;
 let walkTime = 0;
 
 charGroup.position.copy(charPos);
@@ -540,15 +536,6 @@ joystickZone.addEventListener('mousedown', (e) => {
   window.addEventListener('mousemove', onMove);
   window.addEventListener('mouseup', onUp);
 });
-
-// ========== JUMP BUTTON ==========
-const jumpBtn = document.getElementById('jumpBtn');
-let jumpPressed = false;
-
-jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); jumpPressed = true; }, { passive: false });
-jumpBtn.addEventListener('touchend', () => { jumpPressed = false; });
-jumpBtn.addEventListener('mousedown', (e) => { e.preventDefault(); jumpPressed = true; });
-jumpBtn.addEventListener('mouseup', () => { jumpPressed = false; });
 
 // ========== KEYBOARD SUPPORT ==========
 const keys = {};
@@ -676,23 +663,6 @@ function animate() {
     if (keys['s'] || keys['arrowdown']) inputZ = 1;
     if (keys['a'] || keys['arrowleft']) inputX = -1;
     if (keys['d'] || keys['arrowright']) inputX = 1;
-    if (keys[' ']) jumpPressed = true;
-
-    // --- Jump ---
-    if (jumpPressed && isGrounded) {
-      velY = JUMP_VEL;
-      isGrounded = false;
-    }
-    if (!keys[' ']) jumpPressed = false;
-
-    // --- Gravity ---
-    velY += GRAVITY * dt;
-    charPos.y += velY * dt;
-    if (charPos.y <= 0) {
-      charPos.y = 0;
-      velY = 0;
-      isGrounded = true;
-    }
 
     // --- Movement (tank-style: left/right turns, up/down moves forward/back) ---
     if (Math.abs(inputX) > 0.15) {
@@ -714,7 +684,7 @@ function animate() {
     charGroup.rotation.y = charRotY;
 
     // Walk animation
-    if (isMoving && isGrounded) {
+    if (isMoving) {
       walkTime += dt * 8;
       const swing = Math.sin(walkTime) * 0.4;
       armMeshL.rotation.x = swing;
