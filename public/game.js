@@ -87,12 +87,107 @@ function addWall(w, h, d, x, y, z) {
 
 // Back wall (fireplace wall)
 addWall(ROOM_W, ROOM_H, 0.2, 0, ROOM_H / 2, -ROOM_D / 2);
-// Front wall (has opening feel – but we close it for containment)
+// Front wall
 addWall(ROOM_W, ROOM_H, 0.2, 0, ROOM_H / 2, ROOM_D / 2);
 // Left wall
 addWall(0.2, ROOM_H, ROOM_D, -ROOM_W / 2, ROOM_H / 2, 0);
-// Right wall
-addWall(0.2, ROOM_H, ROOM_D, ROOM_W / 2, ROOM_H / 2, 0);
+// Right wall – split into two segments with a 4-unit opening
+addWall(0.2, ROOM_H, 3, ROOM_W / 2, ROOM_H / 2, -3.5); // back segment z=-5 to z=-2
+addWall(0.2, ROOM_H, 3, ROOM_W / 2, ROOM_H / 2, 3.5);  // front segment z=2 to z=5
+// Arch/header above opening
+addWall(0.2, 0.6, 4, ROOM_W / 2, ROOM_H - 0.3, 0);
+
+// ========== DINING ROOM ==========
+const DINING_W = 10;
+
+// Dining room floor
+const dFloor = new THREE.Mesh(new THREE.BoxGeometry(DINING_W, 0.2, ROOM_D), floorMat);
+dFloor.position.set(ROOM_W / 2 + DINING_W / 2, -0.1, 0);
+dFloor.receiveShadow = true;
+scene.add(dFloor);
+
+// Dining room ceiling
+const dCeilingMat = ceilingMat.clone();
+dCeilingMat.transparent = true;
+dCeilingMat.opacity = 1;
+const dCeiling = new THREE.Mesh(new THREE.BoxGeometry(DINING_W, 0.2, ROOM_D), dCeilingMat);
+dCeiling.position.set(ROOM_W / 2 + DINING_W / 2, ROOM_H + 0.1, 0);
+scene.add(dCeiling);
+walls.push(dCeiling);
+
+// Dining room walls
+addWall(DINING_W, ROOM_H, 0.2, ROOM_W / 2 + DINING_W / 2, ROOM_H / 2, -ROOM_D / 2); // back
+addWall(DINING_W, ROOM_H, 0.2, ROOM_W / 2 + DINING_W / 2, ROOM_H / 2, ROOM_D / 2);  // front
+addWall(0.2, ROOM_H, ROOM_D, ROOM_W / 2 + DINING_W, ROOM_H / 2, 0);                  // far right
+
+// Dining room light
+const diningLight = new THREE.PointLight(0xfff5e0, 1.5, 10);
+diningLight.position.set(ROOM_W / 2 + DINING_W / 2, 3.5, 0);
+diningLight.castShadow = true;
+scene.add(diningLight);
+
+// ---- Dining Table ----
+const tableMat = mat(0x6B3A2A);
+const tableX = ROOM_W / 2 + DINING_W / 2; // center of dining room
+
+// Table top
+const tableTop = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.12, 1.6), tableMat);
+tableTop.position.set(tableX, 0.78, 0);
+tableTop.castShadow = true;
+scene.add(tableTop);
+
+// Table legs
+const tLegGeo = new THREE.BoxGeometry(0.12, 0.72, 0.12);
+const tLegMat = mat(0x5C3020);
+[[-1.3, 0.36, -0.65], [1.3, 0.36, -0.65], [-1.3, 0.36, 0.65], [1.3, 0.36, 0.65]].forEach(([lx, ly, lz]) => {
+  const tLeg = new THREE.Mesh(tLegGeo, tLegMat);
+  tLeg.position.set(tableX + lx, ly, lz);
+  tLeg.castShadow = true;
+  scene.add(tLeg);
+});
+
+// ---- 6 Dining Chairs ----
+const dChairMat = mat(0x8B5E3C);
+const dChairLegMat = mat(0x555555);
+
+function addDiningChair(cx, cz, facingAngle) {
+  const chairGrp = new THREE.Group();
+
+  // Seat
+  const cSeat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.5), dChairMat);
+  cSeat.position.y = 0.48;
+  cSeat.castShadow = true;
+  chairGrp.add(cSeat);
+
+  // Backrest
+  const cBack = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.06), dChairMat);
+  cBack.position.set(0, 0.82, -0.22);
+  cBack.castShadow = true;
+  chairGrp.add(cBack);
+
+  // 4 legs
+  const cLegGeo = new THREE.BoxGeometry(0.05, 0.44, 0.05);
+  [[-0.2, 0.22, -0.2], [0.2, 0.22, -0.2], [-0.2, 0.22, 0.2], [0.2, 0.22, 0.2]].forEach(([lx, ly, lz]) => {
+    const cLeg = new THREE.Mesh(cLegGeo, dChairLegMat);
+    cLeg.position.set(lx, ly, lz);
+    cLeg.castShadow = true;
+    chairGrp.add(cLeg);
+  });
+
+  chairGrp.position.set(cx, 0, cz);
+  chairGrp.rotation.y = facingAngle;
+  scene.add(chairGrp);
+}
+
+// 2 chairs on each long side, 1 at each short end
+// Long sides (facing the table center from +z and -z)
+addDiningChair(tableX - 0.8, -1.2, 0);          // back-left
+addDiningChair(tableX + 0.8, -1.2, 0);          // back-right
+addDiningChair(tableX - 0.8, 1.2, Math.PI);     // front-left
+addDiningChair(tableX + 0.8, 1.2, Math.PI);     // front-right
+// Short ends
+addDiningChair(tableX - 2.0, 0, Math.PI / 2);   // left end
+addDiningChair(tableX + 2.0, 0, -Math.PI / 2);  // right end
 
 // ========== FIREPLACE ==========
 const brickMat = mat(0x8B3A2A);
@@ -228,17 +323,23 @@ scene.add(rug);
 
 // ========== COLLISION BOXES ==========
 const colliders = [
-  // Walls (inner bounds)
-  { min: new THREE.Vector3(-ROOM_W / 2, 0, -ROOM_D / 2), max: new THREE.Vector3(-ROOM_W / 2 + 0.3, ROOM_H, ROOM_D / 2) },
-  { min: new THREE.Vector3(ROOM_W / 2 - 0.3, 0, -ROOM_D / 2), max: new THREE.Vector3(ROOM_W / 2, ROOM_H, ROOM_D / 2) },
-  { min: new THREE.Vector3(-ROOM_W / 2, 0, -ROOM_D / 2), max: new THREE.Vector3(ROOM_W / 2, ROOM_H, -ROOM_D / 2 + 0.3) },
-  { min: new THREE.Vector3(-ROOM_W / 2, 0, ROOM_D / 2 - 0.3), max: new THREE.Vector3(ROOM_W / 2, ROOM_H, ROOM_D / 2) },
+  // Living room walls
+  { min: new THREE.Vector3(-ROOM_W / 2, 0, -ROOM_D / 2), max: new THREE.Vector3(-ROOM_W / 2 + 0.3, ROOM_H, ROOM_D / 2) },  // left
+  { min: new THREE.Vector3(-ROOM_W / 2, 0, -ROOM_D / 2), max: new THREE.Vector3(ROOM_W / 2 + DINING_W, ROOM_H, -ROOM_D / 2 + 0.3) }, // back (spans both rooms)
+  { min: new THREE.Vector3(-ROOM_W / 2, 0, ROOM_D / 2 - 0.3), max: new THREE.Vector3(ROOM_W / 2 + DINING_W, ROOM_H, ROOM_D / 2) },   // front (spans both rooms)
+  // Right wall segments (with opening from z=-2 to z=2)
+  { min: new THREE.Vector3(ROOM_W / 2 - 0.3, 0, -ROOM_D / 2), max: new THREE.Vector3(ROOM_W / 2, ROOM_H, -2) },  // back segment
+  { min: new THREE.Vector3(ROOM_W / 2 - 0.3, 0, 2), max: new THREE.Vector3(ROOM_W / 2, ROOM_H, ROOM_D / 2) },     // front segment
+  // Dining room far right wall
+  { min: new THREE.Vector3(ROOM_W / 2 + DINING_W - 0.3, 0, -ROOM_D / 2), max: new THREE.Vector3(ROOM_W / 2 + DINING_W, ROOM_H, ROOM_D / 2) },
   // Fireplace
   { min: new THREE.Vector3(-1.3, 0, -5.0), max: new THREE.Vector3(1.3, 2.4, -4.5) },
   // TV stand + TV
   { min: new THREE.Vector3(3.3, 0, -3.8), max: new THREE.Vector3(5.7, 2.3, -3.2) },
-  // Sofa (axis-aligned bounding box for rotated sofa at (1, 0, 1))
+  // Sofa
   { min: new THREE.Vector3(-0.8, 0, -0.2), max: new THREE.Vector3(2.8, 1.2, 2.0) },
+  // Dining table
+  { min: new THREE.Vector3(tableX - 1.6, 0, -0.9), max: new THREE.Vector3(tableX + 1.6, 0.9, 0.9) },
 ];
 
 // ========== ROBLOX CHARACTER ==========
