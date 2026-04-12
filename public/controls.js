@@ -38,8 +38,9 @@ const keys = {};
 window.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; });
 window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
-// ======= Drag-to-look (camera orbit) =======
-let lookYaw = 0, lookPitch = 0;
+// ======= Drag-to-look (camera orbit + character turn) =======
+let lookPitch = 0;
+let dragYawDelta = 0; // accumulates drag X since last consume
 let dragActive = false, dragTouchId = null, lastX = 0, lastY = 0;
 
 function inZone(el, x, y) {
@@ -59,7 +60,7 @@ function dragMove(x, y) {
   if (!dragActive) return;
   const dx = x - lastX, dy = y - lastY;
   lastX = x; lastY = y;
-  lookYaw += dx * 0.006;
+  dragYawDelta += dx * 0.006;
   lookPitch += dy * 0.005;
   lookPitch = Math.max(-0.5, Math.min(0.8, lookPitch));
 }
@@ -93,15 +94,20 @@ export function getInput() {
 }
 
 export function getLook() {
-  return { yaw: lookYaw, pitch: lookPitch };
+  return { yaw: 0, pitch: lookPitch };
 }
 
-// Smoothly decay look offsets back to 0 (called when player is moving)
+// Consume accumulated drag yaw (applied to character rotation)
+export function consumeDragYaw() {
+  const v = dragYawDelta;
+  dragYawDelta = 0;
+  return v;
+}
+
+// Smoothly decay look pitch back to 0 (called when player is moving)
 export function decayLook(dt, rate = 6) {
-  if (dragActive) return; // don't fight the user's drag
+  if (dragActive) return;
   const k = 1 - Math.exp(-rate * dt);
-  lookYaw += (0 - lookYaw) * k;
   lookPitch += (0 - lookPitch) * k;
-  if (Math.abs(lookYaw) < 0.001) lookYaw = 0;
   if (Math.abs(lookPitch) < 0.001) lookPitch = 0;
 }

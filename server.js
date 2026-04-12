@@ -204,6 +204,16 @@ wss.on('connection', (ws) => {
             seekTimer = setInterval(() => {
               seekCountdown--;
               broadcast({ type: 'seekCountdown', seekCountdown });
+              // In the final 30 seconds, send continuous minor shakes for every hidden hider
+              if (seekCountdown <= 30 && seekCountdown > 0) {
+                const occupied = [];
+                for (const p of players.values()) {
+                  if (p.role === 'hider' && p.isHiding && !p.isFound) occupied.push(p.hiddenFurniture);
+                }
+                if (occupied.length > 0) {
+                  broadcast({ type: 'shake', furnitureIndices: occupied, duration: 1.2, amplitude: 0.25 });
+                }
+              }
               if (seekCountdown <= 0) {
                 clearInterval(seekTimer); seekTimer = null;
                 const anyAlive = [...players.values()].some(p => p.role === 'hider' && !p.isFound);

@@ -1,7 +1,7 @@
 import { THREE, renderer, scene, camera, fireLight } from './scene.js';
 import { ROOM_W, ROOM_D, ROOM_H, DINING_W, walls, hideables, colliders, fireParts, tvGlow } from './room.js';
 import { createCharacter, animateWalk } from './character.js';
-import { getInput, getLook, decayLook } from './controls.js';
+import { getInput, getLook, decayLook, consumeDragYaw } from './controls.js';
 import { send, getMyId, getMyRole, setOnMessage, showToast } from './network.js';
 
 // ========== STATE ==========
@@ -26,6 +26,46 @@ const remoteFx = new Map();
 
 // Shake state: { furnitureIndex -> remaining seconds }
 const shaking = new Map();
+
+// Hider tracking for room-detection sound
+const hiddenHiderFurniture = new Map(); // playerId -> furnitureIndex
+let lastSeekerRoom = null;
+
+// Room detection based on position
+function roomAt(x, z) {
+  if (z < -5) return 'garage';
+  if (z > 5) {
+    if (x < -6) return 'office';
+    if (x > 6) return 'bedroom';
+    return 'mid-south';
+  }
+  if (x < -6) return 'play';
+  if (x > 6) return 'dining';
+  return 'living';
+}
+
+// Simple "ugh ugh" sound via Web Audio (no asset needed)
+let audioCtx = null;
+function playUghUgh() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = audioCtx.currentTime;
+    for (let i = 0; i < 2; i++) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      const start = now + i * 0.28;
+      osc.frequency.setValueAtTime(200, start);
+      osc.frequency.linearRampToValueAtTime(110, start + 0.18);
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.25, start + 0.04);
+      gain.gain.linearRampToValueAtTime(0, start + 0.22);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(start);
+      osc.stop(start + 0.24);
+    }
+  } catch (e) {}
+}
 
 // Remote players
 const remotePlayers = new Map(); // id -> { char, pos, rot, targetPos, targetRot, hiddenFi }
@@ -156,6 +196,7 @@ setOnMessage((msg) => {
   if (msg.type === 'playerHid') {
     const rp = remotePlayers.get(msg.id);
     if (rp) { rp.char.group.visible = false; rp.hiddenFi = msg.furnitureIndex; }
+    hiddenHiderFurniture.set(msg.id, msg.furnitureIndex);
   }
 
   if (msg.type === 'playerUnhid') {
@@ -164,19 +205,24 @@ setOnMessage((msg) => {
       rp.char.group.visible = true; rp.hiddenFi = -1;
       if (msg.pos) { rp.targetPos.set(msg.pos.x, 0, msg.pos.z); rp.char.group.position.copy(rp.targetPos); }
     }
+    hiddenHiderFurniture.delete(msg.id);
   }
 
   if (msg.type === 'shake') {
-    // Trigger shake animation on listed furniture for everyone
     const duration = msg.duration || 1.0;
+    const amp = msg.amplitude != null ? msg.amplitude : 1.0;
     for (const fi of msg.furnitureIndices) {
-      // Don't override a longer shake with a shorter one
-      const current = shaking.get(fi) || 0;
-      shaking.set(fi, Math.max(current, duration));
+      const current = shaking.get(fi) || { duration: 0, amp: 0 };
+      // Keep the larger effect (longer or more intense)
+      shaking.set(fi, {
+        duration: Math.max(current.duration, duration),
+        amp: Math.max(current.amp, amp),
+      });
     }
   }
 
   if (msg.type === 'hiderCaught') {
+    hiddenHiderFurniture.delete(msg.hiderId);
     const rp = remotePlayers.get(msg.hiderId);
     if (rp) rp.char.group.visible = false;
     if (msg.hiderId === getMyId()) {
@@ -223,6 +269,7 @@ setOnMessage((msg) => {
     }
 
     if (msg.found) {
+      hiddenHiderFurniture.delete(msg.hiderId);
       if (h) {
         h.group.traverse((c) => { if (c.isMesh) c.material.emissive?.setHex(0x004400); });
         setTimeout(() => clearHighlight(h), 1500);
@@ -272,6 +319,8 @@ setOnMessage((msg) => {
     if (dizzyStars) { scene.remove(dizzyStars); dizzyStars = null; }
     for (const [id, fx] of remoteFx) { if (fx.dizzyStars) scene.remove(fx.dizzyStars); }
     remoteFx.clear();
+    hiddenHiderFurniture.clear();
+    lastSeekerRoom = null;
     charPos.set(0, 0, 2); charRotY = 0;
     hideZone.classList.remove('visible');
     hideBtn.textContent = 'HIDE';
@@ -318,12 +367,13 @@ function animate() {
   const t = clock.elapsedTime;
   for (const h of hideables) {
     const fi = hideables.indexOf(h);
-    const remaining = shaking.get(fi);
-    if (remaining > 0) {
-      h.group.position.x = h.pos.x + Math.sin(t * 30) * .04;
-      h.group.position.z = h.pos.z + Math.cos(t * 39) * .04;
-      h.group.rotation.z = Math.sin(t * 21) * .02;
-      shaking.set(fi, remaining - dt);
+    const state = shaking.get(fi);
+    if (state && state.duration > 0) {
+      const a = state.amp * .04;
+      h.group.position.x = h.pos.x + Math.sin(t * 30) * a;
+      h.group.position.z = h.pos.z + Math.cos(t * 39) * a;
+      h.group.rotation.z = Math.sin(t * 21) * .02 * state.amp;
+      state.duration -= dt;
     } else if (shaking.has(fi)) {
       h.group.position.x = h.pos.x;
       h.group.position.z = h.pos.z;
@@ -339,6 +389,8 @@ function animate() {
   if (canMove && !seekerBlind && !isHiding && !disabled) {
     const input = getInput();
     if (Math.abs(input.x) > .15) charRotY -= input.x * TURN_SPEED * dt;
+    // Drag horizontal also turns the character
+    charRotY -= consumeDragYaw();
     if (Math.abs(input.z) > .15) {
       const fwd = -input.z;
       charPos.x += Math.sin(charRotY) * fwd * MOVE_SPEED * dt;
@@ -347,6 +399,22 @@ function animate() {
     isMoving = Math.abs(input.x) > .15 || Math.abs(input.z) > .15;
     if (isMoving) decayLook(dt, 6);
     resolveCollision(charPos, .4);
+
+    // Seeker: play "ugh ugh" when entering a room that has a hidden hider
+    if (role === 'seeker' && phase === 'seeking') {
+      const currentRoom = roomAt(charPos.x, charPos.z);
+      if (currentRoom !== lastSeekerRoom) {
+        lastSeekerRoom = currentRoom;
+        // Does the current room contain any hidden hider?
+        for (const fi of hiddenHiderFurniture.values()) {
+          const h = hideables[fi];
+          if (h && roomAt(h.pos.x, h.pos.z) === currentRoom) {
+            playUghUgh();
+            break;
+          }
+        }
+      }
+    }
     myChar.group.position.copy(charPos);
     myChar.group.rotation.y = charRotY;
 
