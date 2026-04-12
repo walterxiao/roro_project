@@ -97,6 +97,7 @@ function connect() {
     onMessage(msg);
   };
 
+  ws.onerror = () => {};
   ws.onclose = () => setTimeout(connect, 2000);
 }
 
