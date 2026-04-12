@@ -326,11 +326,21 @@ function animate() {
   // --- CAMERA ---
   if (isHiding && hiddenIn) {
     // Pick the room the hideable is in, center the bird's-eye accordingly
-    let rcx, rcz = 0, rw, rd = ROOM_D;
-    if (hiddenIn.pos.z < -5) {
+    const p = hiddenIn.pos;
+    let rcx, rcz = 0, rw = ROOM_W, rd = ROOM_D;
+    if (p.z < -5) {
       // Garage
       rcx = 12; rcz = -9; rw = 8; rd = 8;
-    } else if (hiddenIn.pos.x > ROOM_W / 2) {
+    } else if (p.z > 5) {
+      // Back row: office / middle-south / bedroom
+      rcz = 10;
+      if (p.x < -ROOM_W / 2) { rcx = -ROOM_W / 2 - 5; rw = 10; }   // office
+      else if (p.x > ROOM_W / 2) { rcx = ROOM_W / 2 + DINING_W / 2; rw = DINING_W; } // bedroom
+      else { rcx = 0; rw = ROOM_W; }                                // middle-south
+    } else if (p.x < -ROOM_W / 2) {
+      // Play room
+      rcx = -ROOM_W / 2 - 5; rw = 10;
+    } else if (p.x > ROOM_W / 2) {
       // Dining room
       rcx = ROOM_W / 2 + DINING_W / 2; rw = DINING_W;
     } else {

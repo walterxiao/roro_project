@@ -24,9 +24,17 @@ function addWall(w, h, d, x, y, z) {
   scene.add(wall); walls.push(wall); return wall;
 }
 
+// Living room back wall
 addWall(ROOM_W, ROOM_H, 0.2, 0, ROOM_H / 2, -ROOM_D / 2);
-addWall(ROOM_W, ROOM_H, 0.2, 0, ROOM_H / 2, ROOM_D / 2);
-addWall(0.2, ROOM_H, ROOM_D, -ROOM_W / 2, ROOM_H / 2, 0);
+// Living room front wall — split for opening to middle-south room (x=-2 to x=2)
+addWall(4, ROOM_H, 0.2, -4, ROOM_H / 2, ROOM_D / 2);
+addWall(4, ROOM_H, 0.2, 4, ROOM_H / 2, ROOM_D / 2);
+addWall(4, 0.6, 0.2, 0, ROOM_H - 0.3, ROOM_D / 2); // header
+// Living room left wall — split for opening to play room (z=-1.5 to z=1.5)
+addWall(0.2, ROOM_H, 3.5, -ROOM_W / 2, ROOM_H / 2, -3.25);
+addWall(0.2, ROOM_H, 3.5, -ROOM_W / 2, ROOM_H / 2, 3.25);
+addWall(0.2, 0.6, 3, -ROOM_W / 2, ROOM_H - 0.3, 0);
+// Living-dining passage split (existing)
 addWall(0.2, ROOM_H, 3, ROOM_W / 2, ROOM_H / 2, -3.5);
 addWall(0.2, ROOM_H, 3, ROOM_W / 2, ROOM_H / 2, 3.5);
 addWall(0.2, 0.6, 4, ROOM_W / 2, ROOM_H - 0.3, 0);
@@ -41,7 +49,11 @@ dCeiling.position.set(ROOM_W / 2 + DINING_W / 2, ROOM_H + 0.1, 0); scene.add(dCe
 addWall(5, ROOM_H, 0.2, 8.5, ROOM_H / 2, -ROOM_D / 2);      // left segment x=6 to 11
 addWall(2, ROOM_H, 0.2, 15, ROOM_H / 2, -ROOM_D / 2);       // right segment x=14 to 16
 addWall(3, 0.6, 0.2, 12.5, ROOM_H - 0.3, -ROOM_D / 2);      // header above doorway
-addWall(DINING_W, ROOM_H, 0.2, ROOM_W / 2 + DINING_W / 2, ROOM_H / 2, ROOM_D / 2);
+// Dining front wall — split for opening to bedroom (x=10 to x=13)
+addWall(4, ROOM_H, 0.2, 8, ROOM_H / 2, ROOM_D / 2);
+addWall(3, ROOM_H, 0.2, 14.5, ROOM_H / 2, ROOM_D / 2);
+addWall(3, 0.6, 0.2, 11.5, ROOM_H - 0.3, ROOM_D / 2);
+// Dining right wall
 addWall(0.2, ROOM_H, ROOM_D, ROOM_W / 2 + DINING_W, ROOM_H / 2, 0);
 
 const diningLight = new THREE.PointLight(0xfff5e0, 1.5, 10);
@@ -291,6 +303,209 @@ sofaGroup.position.set(1, 0, 1); sofaGroup.rotation.y = Math.PI - 0.4; scene.add
 // Rug
 const rug = new THREE.Mesh(new THREE.BoxGeometry(3, .02, 2), mat(0xCC4444)); rug.position.set(0, .01, -2); scene.add(rug);
 
+// ========== PLAY ROOM ==========
+const PLAY_W = 10;
+const PLAY_X = -ROOM_W / 2 - PLAY_W / 2;
+const playFloor = new THREE.Mesh(new THREE.BoxGeometry(PLAY_W, 0.2, ROOM_D), mat(0xDDAA88));
+playFloor.position.set(PLAY_X, -0.1, 0); playFloor.receiveShadow = true; scene.add(playFloor);
+const playCeilMat = ceilingMat.clone(); playCeilMat.transparent = true; playCeilMat.opacity = 1;
+const playCeil = new THREE.Mesh(new THREE.BoxGeometry(PLAY_W, 0.2, ROOM_D), playCeilMat);
+playCeil.position.set(PLAY_X, ROOM_H + 0.1, 0); scene.add(playCeil); walls.push(playCeil);
+// Play room walls (left, back, front with opening to office)
+addWall(0.2, ROOM_H, ROOM_D, PLAY_X - PLAY_W / 2, ROOM_H / 2, 0); // far left
+addWall(PLAY_W, ROOM_H, 0.2, PLAY_X, ROOM_H / 2, -ROOM_D / 2);    // back
+// Front wall with opening to office (x=-14 to x=-11)
+addWall(3, ROOM_H, 0.2, PLAY_X - PLAY_W / 2 + 1.5, ROOM_H / 2, ROOM_D / 2);
+addWall(4, ROOM_H, 0.2, PLAY_X + PLAY_W / 2 - 2, ROOM_H / 2, ROOM_D / 2);
+addWall(3, 0.6, 0.2, PLAY_X - 1, ROOM_H - 0.3, ROOM_D / 2);
+
+const playLight = new THREE.PointLight(0xffeecc, 1.3, 12);
+playLight.position.set(PLAY_X, 3.5, 0); scene.add(playLight);
+
+// Toy car tracks (2 ovals on floor)
+function makeTrack(cx, cz, rot) {
+  const g = new THREE.Group();
+  const trackMat = mat(0x333344);
+  const outer = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.05, 1.6), trackMat);
+  outer.position.y = 0.025; g.add(outer);
+  const inner = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 0.8), mat(0xDDAA88));
+  inner.position.y = 0.026; g.add(inner);
+  // Racing stripes
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 1.4), mat(0xffff00));
+  stripe.position.set(0, 0.027, 0); g.add(stripe);
+  g.position.set(cx, 0, cz); g.rotation.y = rot; scene.add(g);
+  return g;
+}
+const track1 = makeTrack(PLAY_X - 2.5, -2, 0);
+const track2 = makeTrack(PLAY_X + 2, -2, 0);
+
+// Poker table (round-ish)
+const pokerGroup = new THREE.Group();
+const pokerTop = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.15, 16), mat(0x2a6a3a));
+pokerTop.position.y = 0.75; pokerTop.castShadow = true; pokerGroup.add(pokerTop);
+const pokerRim = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.1, 16), mat(0x5C3020));
+pokerRim.position.y = 0.8; pokerGroup.add(pokerRim);
+const pokerPost = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.75, 8), mat(0x444444));
+pokerPost.position.y = 0.375; pokerGroup.add(pokerPost);
+const pokerBase = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.08, 16), mat(0x444444));
+pokerBase.position.y = 0.04; pokerGroup.add(pokerBase);
+pokerGroup.position.set(PLAY_X, 0, 2.5);
+scene.add(pokerGroup);
+
+// ========== OFFICE ==========
+const OFFICE_Z = ROOM_D / 2 + 5; // center at z=10
+const officeFloor = new THREE.Mesh(new THREE.BoxGeometry(PLAY_W, 0.2, ROOM_D), mat(0xA88870));
+officeFloor.position.set(PLAY_X, -0.1, OFFICE_Z); officeFloor.receiveShadow = true; scene.add(officeFloor);
+const officeCeilMat = ceilingMat.clone(); officeCeilMat.transparent = true; officeCeilMat.opacity = 1;
+const officeCeil = new THREE.Mesh(new THREE.BoxGeometry(PLAY_W, 0.2, ROOM_D), officeCeilMat);
+officeCeil.position.set(PLAY_X, ROOM_H + 0.1, OFFICE_Z); scene.add(officeCeil); walls.push(officeCeil);
+addWall(0.2, ROOM_H, ROOM_D, PLAY_X - PLAY_W / 2, ROOM_H / 2, OFFICE_Z);
+addWall(PLAY_W, ROOM_H, 0.2, PLAY_X, ROOM_H / 2, OFFICE_Z + ROOM_D / 2);
+// Right wall of office (separates from middle-south room)
+addWall(0.2, ROOM_H, ROOM_D, PLAY_X + PLAY_W / 2, ROOM_H / 2, OFFICE_Z);
+
+const officeLight = new THREE.PointLight(0xffffff, 1.2, 12);
+officeLight.position.set(PLAY_X, 3.5, OFFICE_Z); scene.add(officeLight);
+
+// Office desks (2) with chairs
+function makeDesk(cx, cz, angle) {
+  const g = new THREE.Group();
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 0.9), mat(0x6B3A2A));
+  top.position.y = 0.8; top.castShadow = true; g.add(top);
+  const legGeo = new THREE.BoxGeometry(0.1, 0.75, 0.1);
+  [[-0.8, 0.375, -0.4], [0.8, 0.375, -0.4], [-0.8, 0.375, 0.4], [0.8, 0.375, 0.4]].forEach(([x, y, z]) => {
+    const l = new THREE.Mesh(legGeo, mat(0x444444)); l.position.set(x, y, z); g.add(l);
+  });
+  g.position.set(cx, 0, cz); g.rotation.y = angle; scene.add(g);
+  return g;
+}
+const desk1 = makeDesk(PLAY_X - 2.5, OFFICE_Z, 0);
+const desk2 = makeDesk(PLAY_X + 2.5, OFFICE_Z + 2, Math.PI / 2);
+
+// Office chairs (simple swivel-style)
+function makeOfficeChair(cx, cz) {
+  const g = new THREE.Group();
+  const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 12), mat(0x222222));
+  seat.position.y = 0.55; g.add(seat);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.1), mat(0x222222));
+  back.position.set(0, 0.85, -0.25); g.add(back);
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.45, 8), mat(0x555555));
+  post.position.y = 0.3; g.add(post);
+  const baseC = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.06, 8), mat(0x555555));
+  baseC.position.y = 0.07; g.add(baseC);
+  g.position.set(cx, 0, cz); scene.add(g);
+  return g;
+}
+const officeChair1 = makeOfficeChair(PLAY_X - 2.5, OFFICE_Z + 0.9);
+const officeChair2 = makeOfficeChair(PLAY_X + 1.6, OFFICE_Z + 2);
+
+// ========== MIDDLE-SOUTH ROOM (between living and office, fish tank) ==========
+const midSouthFloor = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.2, ROOM_D), mat(0x8B5E3C));
+midSouthFloor.position.set(0, -0.1, OFFICE_Z); midSouthFloor.receiveShadow = true; scene.add(midSouthFloor);
+const midSouthCeilMat = ceilingMat.clone(); midSouthCeilMat.transparent = true; midSouthCeilMat.opacity = 1;
+const midSouthCeil = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.2, ROOM_D), midSouthCeilMat);
+midSouthCeil.position.set(0, ROOM_H + 0.1, OFFICE_Z); scene.add(midSouthCeil); walls.push(midSouthCeil);
+addWall(ROOM_W, ROOM_H, 0.2, 0, ROOM_H / 2, OFFICE_Z + ROOM_D / 2); // front (south)
+// Right wall of middle-south room (separates from bedroom)
+addWall(0.2, ROOM_H, ROOM_D, ROOM_W / 2, ROOM_H / 2, OFFICE_Z);
+
+const midLight = new THREE.PointLight(0xffffff, 1.2, 12);
+midLight.position.set(0, 3.5, OFFICE_Z); scene.add(midLight);
+
+// Mid-south table and chair
+const midTable = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 0.8), mat(0x6B3A2A));
+midTable.position.set(-2, 0.75, OFFICE_Z - 2); midTable.castShadow = true; scene.add(midTable);
+[[-2.5, .375, OFFICE_Z-2.3], [-1.5, .375, OFFICE_Z-2.3], [-2.5, .375, OFFICE_Z-1.7], [-1.5, .375, OFFICE_Z-1.7]].forEach(([x,y,z]) => {
+  const l = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.75, 0.08), mat(0x444444));
+  l.position.set(x, y, z); scene.add(l);
+});
+const midChair = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.5), mat(0x8B5E3C));
+midChair.position.set(-2, 0.45, OFFICE_Z - 1.0); scene.add(midChair);
+
+// Fish tank in middle-south room
+function makeFishTank(cx, cz) {
+  const g = new THREE.Group();
+  const stand = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.7, 0.5), mat(0x5C3020));
+  stand.position.y = 0.35; stand.castShadow = true; g.add(stand);
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.7, 0.45), new THREE.MeshStandardMaterial({ color: 0x88CCEE, transparent: true, opacity: 0.6 }));
+  glass.position.y = 1.05; g.add(glass);
+  const water = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.5, 0.4), new THREE.MeshStandardMaterial({ color: 0x3388CC, transparent: true, opacity: 0.5 }));
+  water.position.y = 0.95; g.add(water);
+  // Fish (small orange boxes)
+  const fish1 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.04), mat(0xff8822));
+  fish1.position.set(-0.2, 1.0, 0); g.add(fish1);
+  const fish2 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.04), mat(0xffdd44));
+  fish2.position.set(0.2, 0.9, 0); g.add(fish2);
+  g.position.set(cx, 0, cz); scene.add(g);
+  return g;
+}
+const fishTank1 = makeFishTank(2, OFFICE_Z + 3.5);
+
+// ========== BEDROOM ==========
+const BED_X = ROOM_W / 2 + DINING_W / 2;
+const bedFloor = new THREE.Mesh(new THREE.BoxGeometry(DINING_W, 0.2, ROOM_D), mat(0xBB9977));
+bedFloor.position.set(BED_X, -0.1, OFFICE_Z); bedFloor.receiveShadow = true; scene.add(bedFloor);
+const bedCeilMat = ceilingMat.clone(); bedCeilMat.transparent = true; bedCeilMat.opacity = 1;
+const bedCeil = new THREE.Mesh(new THREE.BoxGeometry(DINING_W, 0.2, ROOM_D), bedCeilMat);
+bedCeil.position.set(BED_X, ROOM_H + 0.1, OFFICE_Z); scene.add(bedCeil); walls.push(bedCeil);
+addWall(DINING_W, ROOM_H, 0.2, BED_X, ROOM_H / 2, OFFICE_Z + ROOM_D / 2);
+addWall(0.2, ROOM_H, ROOM_D, BED_X + DINING_W / 2, ROOM_H / 2, OFFICE_Z);
+
+const bedLight = new THREE.PointLight(0xfff5e0, 1.3, 12);
+bedLight.position.set(BED_X, 3.5, OFFICE_Z); scene.add(bedLight);
+
+// Beds
+function makeBed(cx, cz, angle) {
+  const g = new THREE.Group();
+  // Frame
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.3, 2.2), mat(0x5C3A1E));
+  frame.position.y = 0.25; frame.castShadow = true; g.add(frame);
+  // Mattress
+  const mattress = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.25, 2.05), mat(0xF8F4EE));
+  mattress.position.y = 0.525; g.add(mattress);
+  // Blanket
+  const blanket = new THREE.Mesh(new THREE.BoxGeometry(1.32, 0.08, 1.3), mat(0x4466CC));
+  blanket.position.set(0, 0.67, -0.3); g.add(blanket);
+  // Pillow
+  const pillow = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.15, 0.4), mat(0xffffff));
+  pillow.position.set(0, 0.72, 0.75); g.add(pillow);
+  // Headboard
+  const head = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.8, 0.1), mat(0x5C3A1E));
+  head.position.set(0, 0.8, 1.1); head.castShadow = true; g.add(head);
+  g.position.set(cx, 0, cz); g.rotation.y = angle; scene.add(g);
+  return g;
+}
+const bed1 = makeBed(BED_X - 3, OFFICE_Z + 2.5, 0);
+const bed2 = makeBed(BED_X, OFFICE_Z + 2.5, 0);
+const bed3 = makeBed(BED_X + 3, OFFICE_Z + 2.5, 0);
+
+// Nightstand between beds
+function makeNightstand(cx, cz) {
+  const g = new THREE.Group();
+  const top = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), mat(0x6B3A2A));
+  top.position.y = 0.3; top.castShadow = true; g.add(top);
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.04, 0.04), mat(0xaaaaaa));
+  handle.position.set(0, 0.35, 0.31); g.add(handle);
+  const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.3, 0.18), mat(0xffdd88));
+  lamp.position.set(0, 0.75, 0); g.add(lamp);
+  g.position.set(cx, 0, cz); scene.add(g);
+  return g;
+}
+const stand1 = makeNightstand(BED_X - 1.5, OFFICE_Z + 2);
+
+// Plant
+const plantGroup = new THREE.Group();
+const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.25, 0.4, 10), mat(0x884422));
+pot.position.y = 0.2; plantGroup.add(pot);
+const leaves1 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.5), mat(0x44AA44));
+leaves1.position.y = 0.7; plantGroup.add(leaves1);
+const leaves2 = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, 0.4), mat(0x55CC55));
+leaves2.position.y = 1.05; plantGroup.add(leaves2);
+const leaves3 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.25, 0.3), mat(0x66DD66));
+leaves3.position.y = 1.3; plantGroup.add(leaves3);
+plantGroup.position.set(BED_X + 4, 0, OFFICE_Z + 2);
+scene.add(plantGroup);
+
 // Hideables
 const hideables = [
   { group: sofaGroup, pos: sofaGroup.position.clone(), name: 'Sofa' },
@@ -299,27 +514,59 @@ const hideables = [
   { group: carGroup, pos: carGroup.position.clone(), name: 'Red Car' },
   { group: carGroup2, pos: carGroup2.position.clone(), name: 'Blue Car' },
   { group: bikeGroup, pos: bikeGroup.position.clone(), name: 'Bike' },
+  { group: pokerGroup, pos: pokerGroup.position.clone(), name: 'Poker Table' },
+  { group: track1, pos: track1.position.clone(), name: 'Toy Track 1' },
+  { group: track2, pos: track2.position.clone(), name: 'Toy Track 2' },
+  { group: desk1, pos: desk1.position.clone(), name: 'Desk 1' },
+  { group: desk2, pos: desk2.position.clone(), name: 'Desk 2' },
+  { group: fishTank1, pos: fishTank1.position.clone(), name: 'Fish Tank' },
+  { group: bed1, pos: bed1.position.clone(), name: 'Bed 1' },
+  { group: bed2, pos: bed2.position.clone(), name: 'Bed 2' },
+  { group: bed3, pos: bed3.position.clone(), name: 'Bed 3' },
+  { group: plantGroup, pos: plantGroup.position.clone(), name: 'Plant' },
 ];
 chairGroups.forEach((g, i) => hideables.push({ group: g, pos: g.position.clone(), name: 'Chair ' + (i+1) }));
 
 // Colliders
 const colliders = [
-  // Living room walls (left, front)
-  { min: new THREE.Vector3(-ROOM_W/2, 0, -ROOM_D/2), max: new THREE.Vector3(-ROOM_W/2+.3, ROOM_H, ROOM_D/2) },
-  { min: new THREE.Vector3(-ROOM_W/2, 0, ROOM_D/2-.3), max: new THREE.Vector3(ROOM_W/2+DINING_W, ROOM_H, ROOM_D/2) },
-  // Living room back wall only
+  // Back wall of living room
   { min: new THREE.Vector3(-ROOM_W/2, 0, -ROOM_D/2), max: new THREE.Vector3(ROOM_W/2, ROOM_H, -ROOM_D/2+.3) },
   // Dining back wall segments (opening to garage at x=11 to 14)
   { min: new THREE.Vector3(ROOM_W/2, 0, -ROOM_D/2), max: new THREE.Vector3(11, ROOM_H, -ROOM_D/2+.3) },
   { min: new THREE.Vector3(14, 0, -ROOM_D/2), max: new THREE.Vector3(ROOM_W/2+DINING_W, ROOM_H, -ROOM_D/2+.3) },
+  // Living front wall segments (opening at x=-2 to x=2 to middle-south)
+  { min: new THREE.Vector3(-ROOM_W/2, 0, ROOM_D/2-.3), max: new THREE.Vector3(-2, ROOM_H, ROOM_D/2) },
+  { min: new THREE.Vector3(2, 0, ROOM_D/2-.3), max: new THREE.Vector3(ROOM_W/2, ROOM_H, ROOM_D/2) },
+  // Dining front wall segments (opening at x=10 to x=13 to bedroom)
+  { min: new THREE.Vector3(ROOM_W/2, 0, ROOM_D/2-.3), max: new THREE.Vector3(10, ROOM_H, ROOM_D/2) },
+  { min: new THREE.Vector3(13, 0, ROOM_D/2-.3), max: new THREE.Vector3(ROOM_W/2+DINING_W, ROOM_H, ROOM_D/2) },
+  // Living room left wall segments (opening at z=-1.5 to z=1.5 to play room)
+  { min: new THREE.Vector3(-ROOM_W/2, 0, -ROOM_D/2), max: new THREE.Vector3(-ROOM_W/2+.3, ROOM_H, -1.5) },
+  { min: new THREE.Vector3(-ROOM_W/2, 0, 1.5), max: new THREE.Vector3(-ROOM_W/2+.3, ROOM_H, ROOM_D/2) },
   // Living-dining passage walls
   { min: new THREE.Vector3(ROOM_W/2-.3, 0, -ROOM_D/2), max: new THREE.Vector3(ROOM_W/2, ROOM_H, -2) },
   { min: new THREE.Vector3(ROOM_W/2-.3, 0, 2), max: new THREE.Vector3(ROOM_W/2, ROOM_H, ROOM_D/2) },
   { min: new THREE.Vector3(ROOM_W/2+DINING_W-.3, 0, -ROOM_D/2), max: new THREE.Vector3(ROOM_W/2+DINING_W, ROOM_H, ROOM_D/2) },
   // Garage walls
-  { min: new THREE.Vector3(8, 0, -13), max: new THREE.Vector3(16, ROOM_H, -13+.3) },          // back
-  { min: new THREE.Vector3(8, 0, -13), max: new THREE.Vector3(8+.3, ROOM_H, -5) },             // left
-  { min: new THREE.Vector3(16-.3, 0, -13), max: new THREE.Vector3(16, ROOM_H, -5) },           // right
+  { min: new THREE.Vector3(8, 0, -13), max: new THREE.Vector3(16, ROOM_H, -13+.3) },
+  { min: new THREE.Vector3(8, 0, -13), max: new THREE.Vector3(8+.3, ROOM_H, -5) },
+  { min: new THREE.Vector3(16-.3, 0, -13), max: new THREE.Vector3(16, ROOM_H, -5) },
+  // Play room walls
+  { min: new THREE.Vector3(PLAY_X-PLAY_W/2, 0, -ROOM_D/2), max: new THREE.Vector3(PLAY_X-PLAY_W/2+.3, ROOM_H, ROOM_D/2) }, // far left
+  { min: new THREE.Vector3(PLAY_X-PLAY_W/2, 0, -ROOM_D/2), max: new THREE.Vector3(PLAY_X+PLAY_W/2, ROOM_H, -ROOM_D/2+.3) }, // back
+  // Play room front wall segments (opening to office at x=-14 to x=-11)
+  { min: new THREE.Vector3(PLAY_X-PLAY_W/2, 0, ROOM_D/2-.3), max: new THREE.Vector3(-14, ROOM_H, ROOM_D/2) },
+  { min: new THREE.Vector3(-11, 0, ROOM_D/2-.3), max: new THREE.Vector3(PLAY_X+PLAY_W/2, ROOM_H, ROOM_D/2) },
+  // Office walls
+  { min: new THREE.Vector3(PLAY_X-PLAY_W/2, 0, OFFICE_Z-ROOM_D/2), max: new THREE.Vector3(PLAY_X-PLAY_W/2+.3, ROOM_H, OFFICE_Z+ROOM_D/2) }, // far left
+  { min: new THREE.Vector3(PLAY_X-PLAY_W/2, 0, OFFICE_Z+ROOM_D/2-.3), max: new THREE.Vector3(PLAY_X+PLAY_W/2, ROOM_H, OFFICE_Z+ROOM_D/2) }, // front
+  { min: new THREE.Vector3(PLAY_X+PLAY_W/2-.3, 0, OFFICE_Z-ROOM_D/2), max: new THREE.Vector3(PLAY_X+PLAY_W/2, ROOM_H, OFFICE_Z+ROOM_D/2) }, // right (sep from middle)
+  // Middle-south front wall + right wall
+  { min: new THREE.Vector3(-ROOM_W/2, 0, OFFICE_Z+ROOM_D/2-.3), max: new THREE.Vector3(ROOM_W/2, ROOM_H, OFFICE_Z+ROOM_D/2) },
+  { min: new THREE.Vector3(ROOM_W/2-.3, 0, OFFICE_Z-ROOM_D/2), max: new THREE.Vector3(ROOM_W/2, ROOM_H, OFFICE_Z+ROOM_D/2) },
+  // Bedroom front + right walls
+  { min: new THREE.Vector3(ROOM_W/2, 0, OFFICE_Z+ROOM_D/2-.3), max: new THREE.Vector3(ROOM_W/2+DINING_W, ROOM_H, OFFICE_Z+ROOM_D/2) },
+  { min: new THREE.Vector3(ROOM_W/2+DINING_W-.3, 0, OFFICE_Z-ROOM_D/2), max: new THREE.Vector3(ROOM_W/2+DINING_W, ROOM_H, OFFICE_Z+ROOM_D/2) },
   // Fireplace, TV, sofa, table
   { min: new THREE.Vector3(-1.3, 0, -5), max: new THREE.Vector3(1.3, 2.4, -4.5) },
   { min: new THREE.Vector3(3.3, 0, -3.8), max: new THREE.Vector3(5.7, 2.3, -3.2) },
@@ -331,6 +578,19 @@ const colliders = [
   { min: new THREE.Vector3(9.0, 0, -11.0), max: new THREE.Vector3(11.0, 1.3, -7.0) },
   // Bike
   { min: new THREE.Vector3(8.5, 0, -12.7), max: new THREE.Vector3(9.5, 1.1, -11.3) },
+  // Poker table
+  { min: new THREE.Vector3(PLAY_X-1.0, 0, 1.5), max: new THREE.Vector3(PLAY_X+1.0, 1.0, 3.5) },
+  // Office desks
+  { min: new THREE.Vector3(desk1.position.x-1.0, 0, desk1.position.z-0.5), max: new THREE.Vector3(desk1.position.x+1.0, 1.0, desk1.position.z+0.5) },
+  { min: new THREE.Vector3(desk2.position.x-0.5, 0, desk2.position.z-1.0), max: new THREE.Vector3(desk2.position.x+0.5, 1.0, desk2.position.z+1.0) },
+  // Fish tank
+  { min: new THREE.Vector3(fishTank1.position.x-0.7, 0, fishTank1.position.z-0.3), max: new THREE.Vector3(fishTank1.position.x+0.7, 1.4, fishTank1.position.z+0.3) },
+  // Beds
+  { min: new THREE.Vector3(bed1.position.x-0.8, 0, bed1.position.z-1.2), max: new THREE.Vector3(bed1.position.x+0.8, 1.2, bed1.position.z+1.2) },
+  { min: new THREE.Vector3(bed2.position.x-0.8, 0, bed2.position.z-1.2), max: new THREE.Vector3(bed2.position.x+0.8, 1.2, bed2.position.z+1.2) },
+  { min: new THREE.Vector3(bed3.position.x-0.8, 0, bed3.position.z-1.2), max: new THREE.Vector3(bed3.position.x+0.8, 1.2, bed3.position.z+1.2) },
+  // Plant
+  { min: new THREE.Vector3(plantGroup.position.x-0.4, 0, plantGroup.position.z-0.4), max: new THREE.Vector3(plantGroup.position.x+0.4, 1.5, plantGroup.position.z+0.4) },
   ...chairColliders,
 ];
 
