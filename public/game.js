@@ -1,5 +1,5 @@
 import { THREE, renderer, scene, camera, fireLight } from './scene.js';
-import { ROOM_W, ROOM_D, ROOM_H, DINING_W, walls, hideables, colliders, fireParts, tvGlow } from './room.js';
+import { ROOM_W, ROOM_D, ROOM_H, DINING_W, walls, hideables, hideableBounds, colliders, fireParts, tvGlow } from './room.js';
 import { createCharacter, animateWalk } from './character.js';
 import { getInput, getLook, decayLook, consumeDragYaw } from './controls.js';
 import { send, getMyId, getMyRole, setOnMessage, showToast } from './network.js';
@@ -141,7 +141,7 @@ function onActionBtn() {
       hideBtn.textContent = 'UNHIDE';
       hideZone.classList.add('visible');
       const fi = hideables.indexOf(nearestHideable);
-      send({ type: 'hide', furnitureIndex: fi });
+      send({ type: 'hide', furnitureIndex: fi, bounds: hideableBounds[fi] });
     }
   } else if (role === 'seeker' && phase === 'seeking' && nearestHideable) {
     // Search

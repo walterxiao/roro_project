@@ -38,7 +38,7 @@
     </div>
     <input type="text" id="nameInput" placeholder="Enter your name" maxlength="16">
     <div id="players"></div>
-    <button id="startBtn" disabled>Start Game</button>
+    <button id="startBtn" disabled>I am ready</button>
     <div id="status"></div>
   </div>
 
@@ -132,11 +132,23 @@
 
     function updatePlayers(list) {
       currentPlayers = list;
+      let me = null;
       playersDiv.innerHTML = list.map(p => {
         if (p.id === myId && p.role) myRole = p.role;
-        return p.name + (p.id === myId ? ' (you)' : '');
+        if (p.id === myId) me = p;
+        const tag = p.ready ? ' ✓' : '';
+        return p.name + (p.id === myId ? ' (you)' : '') + tag;
       }).join('<br>');
-      if (!inGameBlocked) startBtn.disabled = list.length < 2;
+      if (!inGameBlocked) {
+        startBtn.disabled = list.length < 2;
+        if (me && me.ready) {
+          startBtn.textContent = 'Waiting for others...';
+          startBtn.style.background = '#555';
+        } else {
+          startBtn.textContent = 'I am ready';
+          startBtn.style.background = '#2a7';
+        }
+      }
     }
 
     let inGameBlocked = false;
@@ -223,7 +235,7 @@
       sessionStorage.setItem('roroName', n);
       wsSend({ type: 'setName', name: n });
     });
-    startBtn.addEventListener('click', () => wsSend({ type: 'startGame' }));
+    startBtn.addEventListener('click', () => wsSend({ type: 'ready' }));
 
     connect();
   </script>

@@ -567,6 +567,12 @@ const hideables = [
 ];
 chairGroups.forEach((g, i) => hideables.push({ group: g, pos: g.position.clone(), name: 'Chair ' + (i+1) }));
 
+// Compute axis-aligned bounds for each hideable (used for proximity checks)
+const hideableBounds = hideables.map(h => {
+  const box = new THREE.Box3().setFromObject(h.group);
+  return { minX: box.min.x, maxX: box.max.x, minZ: box.min.z, maxZ: box.max.z };
+});
+
 // Colliders
 const colliders = [
   // Back wall of living room
@@ -645,4 +651,4 @@ const colliders = [
   ...chairColliders,
 ];
 
-export { ROOM_W, ROOM_D, ROOM_H, DINING_W, walls, hideables, colliders, fireParts, tvGlow };
+export { ROOM_W, ROOM_D, ROOM_H, DINING_W, walls, hideables, hideableBounds, colliders, fireParts, tvGlow };

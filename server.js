@@ -56,7 +56,7 @@ function broadcast(msg, excludeId) {
 function send(ws, msg) { if (ws.readyState === 1) ws.send(JSON.stringify(msg)); }
 
 function pub(p) {
-  return { id: p.id, name: p.name, role: p.role, pos: p.pos, rot: p.rot, isHiding: p.isHiding, isFound: p.isFound };
+  return { id: p.id, name: p.name, role: p.role, pos: p.pos, rot: p.rot, isHiding: p.isHiding, isFound: p.isFound, ready: !!p.ready };
 }
 function allPub() { return [...players.values()].map(pub); }
 
@@ -109,8 +109,18 @@ function startProxShakeTimer() {
     const occupied = new Set();
     for (const p of players.values()) {
       if (p.role !== 'hider' || !p.isHiding || p.isFound) continue;
-      const dx = seeker.pos.x - p.pos.x, dz = seeker.pos.z - p.pos.z;
-      const dist = Math.sqrt(dx * dx + dz * dz);
+      // Distance from seeker to the closest point of the furniture's bounding box
+      let dist;
+      if (p.hiddenBounds) {
+        const b = p.hiddenBounds;
+        const cx = Math.max(b.minX, Math.min(seeker.pos.x, b.maxX));
+        const cz = Math.max(b.minZ, Math.min(seeker.pos.z, b.maxZ));
+        const dx = seeker.pos.x - cx, dz = seeker.pos.z - cz;
+        dist = Math.sqrt(dx * dx + dz * dz);
+      } else {
+        const dx = seeker.pos.x - p.pos.x, dz = seeker.pos.z - p.pos.z;
+        dist = Math.sqrt(dx * dx + dz * dz);
+      }
       if (dist < PROX_RANGE) {
         const chance = 0.9 * (1 - dist / PROX_RANGE);
         if (Math.random() < chance) occupied.add(p.hiddenFurniture);
@@ -136,12 +146,70 @@ function startShakeTimer() {
   }, SHAKE_INTERVAL);
 }
 
+function startGame() {
+  if (players.size < 2) return;
+  // Pick a random seeker
+  const ids = [...players.keys()];
+  const seekerId = ids[Math.floor(Math.random() * ids.length)];
+  for (const p of players.values()) {
+    p.role = (p.id === seekerId) ? 'seeker' : 'hider';
+    p.isHiding = false; p.hiddenFurniture = -1; p.isFound = false;
+    p.ready = false; // clear ready state for next round
+    if (p.role === 'hider') {
+      const s = randomSpawn();
+      p.pos = { x: s.x, z: s.z };
+      p.rot = Math.random() * Math.PI * 2;
+    } else {
+      p.pos = { x: 0, z: 0 };
+      p.rot = 0;
+    }
+  }
+  phase = 'spinning';
+  broadcast({ type: 'wheelSpin', seekerId, players: allPub(), duration: 3000 });
+  setTimeout(() => {
+    if (phase !== 'spinning') return;
+    phase = 'hiding'; seekerChances = 3; hideCountdown = HIDE_TIME;
+    broadcastPlayers();
+    broadcast({ type: 'phaseChange', phase: 'hiding', hideCountdown, seekerChances });
+    startShakeTimer();
+    hideTimer = setInterval(() => {
+      hideCountdown--;
+      broadcast({ type: 'countdown', hideCountdown });
+      if (hideCountdown <= 0) {
+        clearInterval(hideTimer); hideTimer = null;
+        phase = 'seeking';
+        seekCountdown = SEEK_TIME;
+        broadcast({ type: 'phaseChange', phase: 'seeking', seekerChances, seekCountdown });
+        startProxShakeTimer();
+        seekTimer = setInterval(() => {
+          seekCountdown--;
+          broadcast({ type: 'seekCountdown', seekCountdown });
+          if (seekCountdown <= 30 && seekCountdown > 0) {
+            const occupied = [];
+            for (const p of players.values()) {
+              if (p.role === 'hider' && p.isHiding && !p.isFound) occupied.push(p.hiddenFurniture);
+            }
+            if (occupied.length > 0) {
+              broadcast({ type: 'shake', furnitureIndices: occupied, duration: 1.2, amplitude: 0.25 });
+            }
+          }
+          if (seekCountdown <= 0) {
+            clearInterval(seekTimer); seekTimer = null;
+            const anyAlive = [...players.values()].some(p => p.role === 'hider' && !p.isFound);
+            if (anyAlive && phase === 'seeking') endGame('hiders', 'time');
+          }
+        }, 1000);
+      }
+    }, 1000);
+  }, 3000);
+}
+
 wss.on('connection', (ws) => {
   const id = nextId++;
   const player = {
     id, name: 'Player ' + id, role: null,
     pos: { x: 0, z: 2 }, rot: 0,
-    isHiding: false, hiddenFurniture: -1, isFound: false, ws
+    isHiding: false, hiddenFurniture: -1, isFound: false, ready: false, ws
   };
   players.set(id, player);
   send(ws, { type: 'welcome', id, players: allPub(), phase, seekerChances, hideCountdown });
@@ -164,65 +232,13 @@ wss.on('connection', (ws) => {
       }
       broadcast({ type: 'allPlayers', players: allPub() });
     }
-    if (msg.type === 'startGame' && phase === 'lobby') {
-      if (players.size < 2) return;
-      // Pick a random seeker
-      const ids = [...players.keys()];
-      const seekerId = ids[Math.floor(Math.random() * ids.length)];
-      for (const p of players.values()) {
-        p.role = (p.id === seekerId) ? 'seeker' : 'hider';
-        p.isHiding = false; p.hiddenFurniture = -1; p.isFound = false;
-        if (p.role === 'hider') {
-          const s = randomSpawn();
-          p.pos = { x: s.x, z: s.z };
-          p.rot = Math.random() * Math.PI * 2;
-        } else {
-          // Seeker spawns in the living room center
-          p.pos = { x: 0, z: 0 };
-          p.rot = 0;
-        }
+    if (msg.type === 'ready' && phase === 'lobby') {
+      player.ready = !player.ready;
+      broadcastPlayers();
+      const all = [...players.values()];
+      if (all.length >= 2 && all.every(p => p.ready)) {
+        startGame();
       }
-      phase = 'spinning';
-      // Tell everyone to show the wheel animation first
-      broadcast({ type: 'wheelSpin', seekerId, players: allPub(), duration: 3000 });
-      // After the spin animation, start the hiding phase
-      setTimeout(() => {
-        if (phase !== 'spinning') return; // game was reset
-        phase = 'hiding'; seekerChances = 3; hideCountdown = HIDE_TIME;
-        broadcastPlayers();
-        broadcast({ type: 'phaseChange', phase: 'hiding', hideCountdown, seekerChances });
-        startShakeTimer();
-        hideTimer = setInterval(() => {
-          hideCountdown--;
-          broadcast({ type: 'countdown', hideCountdown });
-          if (hideCountdown <= 0) {
-            clearInterval(hideTimer); hideTimer = null;
-            phase = 'seeking';
-            seekCountdown = SEEK_TIME;
-            broadcast({ type: 'phaseChange', phase: 'seeking', seekerChances, seekCountdown });
-            startProxShakeTimer();
-            seekTimer = setInterval(() => {
-              seekCountdown--;
-              broadcast({ type: 'seekCountdown', seekCountdown });
-              // In the final 30 seconds, send continuous minor shakes for every hidden hider
-              if (seekCountdown <= 30 && seekCountdown > 0) {
-                const occupied = [];
-                for (const p of players.values()) {
-                  if (p.role === 'hider' && p.isHiding && !p.isFound) occupied.push(p.hiddenFurniture);
-                }
-                if (occupied.length > 0) {
-                  broadcast({ type: 'shake', furnitureIndices: occupied, duration: 1.2, amplitude: 0.25 });
-                }
-              }
-              if (seekCountdown <= 0) {
-                clearInterval(seekTimer); seekTimer = null;
-                const anyAlive = [...players.values()].some(p => p.role === 'hider' && !p.isFound);
-                if (anyAlive && phase === 'seeking') endGame('hiders', 'time');
-              }
-            }, 1000);
-          }
-        }, 1000);
-      }, 3000); // end of setTimeout for wheel spin
     }
     if (msg.type === 'move' && (phase === 'hiding' || phase === 'seeking')) {
       player.pos = msg.pos; player.rot = msg.rot;
@@ -230,7 +246,7 @@ wss.on('connection', (ws) => {
     }
     // Hide and unhide allowed in both hiding and seeking phases
     if (msg.type === 'hide' && player.role === 'hider' && (phase === 'hiding' || phase === 'seeking') && !player.isFound) {
-      player.isHiding = true; player.hiddenFurniture = msg.furnitureIndex;
+      player.isHiding = true; player.hiddenFurniture = msg.furnitureIndex; player.hiddenBounds = msg.bounds || null;
       broadcast({ type: 'playerHid', id, furnitureIndex: msg.furnitureIndex });
     }
     if (msg.type === 'unhide' && player.role === 'hider' && (phase === 'hiding' || phase === 'seeking') && !player.isFound) {
