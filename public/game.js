@@ -94,6 +94,12 @@ myChar = createCharacter(colorIdx);
 myChar.group.position.copy(charPos);
 phase = 'hiding'; // We only get here after phaseChange to hiding
 
+// Create characters for all other players already in the lobby
+const existingPlayers = window.__roro?.getPlayers?.() || [];
+for (const p of existingPlayers) {
+  if (p.id !== myId) addRemotePlayer(p);
+}
+
 // ========== NETWORK MESSAGES ==========
 setOnMessage((msg) => {
 
@@ -149,9 +155,10 @@ setOnMessage((msg) => {
       charPos.set(0, 0, 2); charRotY = 0;
       if (myChar) { myChar.group.visible = true; myChar.group.position.copy(charPos); }
     }
+    // If hider is hiding when phase changes, keep UNHIDE button visible
     if (phase === 'seeking' && getMyRole() === 'hider' && isHiding) {
-      // Stay hidden, switch to bird's-eye
-      hideZone.classList.remove('visible');
+      hideZone.classList.add('visible');
+      hideBtn.textContent = 'UNHIDE';
     }
   }
 

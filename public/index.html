@@ -71,6 +71,7 @@
     const statusDiv = document.getElementById('status');
 
     let ws, myId = null, myRole = null, gameStarted = false;
+    let currentPlayers = [];
 
     // Restore name from previous session
     const savedName = sessionStorage.getItem('roroName');
@@ -78,8 +79,8 @@
 
     function wsSend(msg) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg)); }
 
-    // Expose ws + role for game modules
-    window.__roro = { getWs: () => ws, getId: () => myId, getRole: () => myRole, send: wsSend };
+    // Expose ws + role + players for game modules
+    window.__roro = { getWs: () => ws, getId: () => myId, getRole: () => myRole, getPlayers: () => currentPlayers, send: wsSend };
 
     function connect() {
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -122,6 +123,7 @@
     }
 
     function updatePlayers(list) {
+      currentPlayers = list;
       let hasSeeker = false, hasHider = false;
       playersDiv.innerHTML = list.map(p => {
         if (p.role === 'seeker') hasSeeker = true;
