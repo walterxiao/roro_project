@@ -87,19 +87,15 @@ function clearHighlight(h) {
   h.group.traverse((c) => { if (c.isMesh) c.material.emissive?.setHex(0x000000); });
 }
 
-// ========== NETWORK MESSAGES ==========
-let colorIdx = 0;
+// ========== INIT (game module loaded after lobby start) ==========
+const myId = getMyId();
+const colorIdx = myId ? myId % 6 : 0;
+myChar = createCharacter(colorIdx);
+myChar.group.position.copy(charPos);
+phase = 'hiding'; // We only get here after phaseChange to hiding
 
+// ========== NETWORK MESSAGES ==========
 setOnMessage((msg) => {
-  if (msg.type === 'welcome') {
-    colorIdx = msg.id % 6;
-    phase = msg.phase;
-    myChar = createCharacter(colorIdx);
-    myChar.group.position.copy(charPos);
-    for (const p of msg.players) {
-      if (p.id !== msg.id) addRemotePlayer(p);
-    }
-  }
 
   if (msg.type === 'playerJoined') addRemotePlayer(msg.player);
 
@@ -128,9 +124,7 @@ setOnMessage((msg) => {
     if (phase === 'hiding') {
       isHiding = false; hiddenIn = null;
       charPos.set(0, 0, 2); charRotY = 0;
-      if (!myChar) myChar = createCharacter(colorIdx);
-      myChar.group.visible = true;
-      myChar.group.position.copy(charPos);
+      if (myChar) { myChar.group.visible = true; myChar.group.position.copy(charPos); }
     }
     if (phase === 'seeking' && getMyRole() === 'hider' && isHiding) {
       // Stay hidden, switch to bird's-eye

@@ -1,5 +1,5 @@
-let ws, myId = null, myRole = null;
-let onMessage = () => {};
+// Uses the WebSocket already created by index.html's lobby script
+const roro = window.__roro;
 
 const phaseText = document.getElementById('phaseText');
 const chancesText = document.getElementById('chancesText');
@@ -17,79 +17,48 @@ function showToast(msg) {
   toastTimeout = setTimeout(() => toast.classList.add('hidden'), 3000);
 }
 
-function send(msg) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg)); }
+function send(msg) { roro.send(msg); }
 
-function connect() {
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  ws = new WebSocket(proto + '//' + location.host);
-
-  ws.onopen = () => {};
-
-  ws.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
-
-    if (msg.type === 'welcome') {
-      myId = msg.id;
-      // Find our role from player list
-      const me = msg.players.find(p => p.id === myId);
-      if (me && me.role) myRole = me.role;
-      if (msg.phase === 'lobby') {
-        // Shouldn't be on game page during lobby — go back
-        window.location.href = '/';
-        return;
-      }
-    }
-
-    if (msg.type === 'phaseChange') {
-      if (msg.phase === 'hiding') {
-        phaseText.textContent = 'Hiding phase';
-        chancesText.textContent = 'Chances: ' + msg.seekerChances;
-        gameOverScreen.classList.add('hidden');
-        if (myRole === 'seeker') blindfold.classList.remove('hidden');
-        else blindfold.classList.add('hidden');
-      }
-      if (msg.phase === 'seeking') {
-        blindfold.classList.add('hidden');
-        phaseText.textContent = 'Seeking phase';
-        chancesText.textContent = 'Chances: ' + msg.seekerChances;
-      }
-    }
-
-    if (msg.type === 'countdown') {
-      bfTimer.textContent = msg.hideCountdown;
-      if (myRole !== 'seeker') phaseText.textContent = 'Hide! ' + msg.hideCountdown + 's';
-    }
-
-    if (msg.type === 'searchResult') {
+// Game module registers its message handler via this
+let gameHandler = () => {};
+window.__roroOnMsg = (msg) => {
+  // Handle HUD updates here
+  if (msg.type === 'phaseChange') {
+    if (msg.phase === 'hiding') {
+      phaseText.textContent = 'Hiding phase';
       chancesText.textContent = 'Chances: ' + msg.seekerChances;
-      if (msg.found) showToast('Found ' + msg.hiderName + '!');
-      else showToast('Nobody there! Chances: ' + msg.seekerChances);
+      gameOverScreen.classList.add('hidden');
+      if (roro.getRole() === 'seeker') blindfold.classList.remove('hidden');
+      else blindfold.classList.add('hidden');
     }
-
-    if (msg.type === 'youWereFound') showToast('You were found!');
-
-    if (msg.type === 'gameOver') {
-      gameOverScreen.classList.remove('hidden');
-      winnerText.textContent = msg.winner === 'seeker' ? 'Seeker wins!' : 'Hiders win!';
+    if (msg.phase === 'seeking') {
+      blindfold.classList.add('hidden');
+      phaseText.textContent = 'Seeking phase';
+      chancesText.textContent = 'Chances: ' + msg.seekerChances;
     }
+  }
+  if (msg.type === 'countdown') {
+    bfTimer.textContent = msg.hideCountdown;
+    if (roro.getRole() !== 'seeker') phaseText.textContent = 'Hide! ' + msg.hideCountdown + 's';
+  }
+  if (msg.type === 'searchResult') {
+    chancesText.textContent = 'Chances: ' + msg.seekerChances;
+    if (msg.found) showToast('Found ' + msg.hiderName + '!');
+    else showToast('Nobody there! Chances: ' + msg.seekerChances);
+  }
+  if (msg.type === 'youWereFound') showToast('You were found!');
+  if (msg.type === 'gameOver') {
+    gameOverScreen.classList.remove('hidden');
+    winnerText.textContent = msg.winner === 'seeker' ? 'Seeker wins!' : 'Hiders win!';
+  }
 
-    if (msg.type === 'reset') {
-      window.location.href = '/';
-      return;
-    }
-
-    onMessage(msg);
-  };
-
-  ws.onerror = () => {};
-  ws.onclose = () => setTimeout(connect, 2000);
-}
+  // Forward to game.js handler
+  gameHandler(msg);
+};
 
 btnAgain.addEventListener('click', () => send({ type: 'resetGame' }));
 
-connect();
-
 export { send, showToast };
-export function getMyId() { return myId; }
-export function getMyRole() { return myRole; }
-export function setOnMessage(fn) { onMessage = fn; }
+export function getMyId() { return roro.getId(); }
+export function getMyRole() { return roro.getRole(); }
+export function setOnMessage(fn) { gameHandler = fn; }

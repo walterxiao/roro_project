@@ -6,34 +6,60 @@
   <title>RoRo Hide &amp; Seek</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#1a1a2e; color:#fff; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; }
-    h1 { font-size:32px; }
-    h2 { font-size:18px; color:#aaa; font-weight:400; }
-    input { padding:12px 18px; font-size:16px; border-radius:8px; border:none; width:220px; text-align:center; }
-    .role-row { display:flex; gap:12px; margin-top:4px; }
-    .role-btn { padding:14px 28px; font-size:16px; font-weight:700; border:2px solid #555; background:#222; color:#fff; border-radius:8px; cursor:pointer; transition:all .2s; }
-    .role-btn:hover { border-color:#888; }
+    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#1a1a2e; color:#fff; min-height:100vh; display:flex; align-items:center; justify-content:center; }
+
+    /* Lobby */
+    #lobby { display:flex; flex-direction:column; align-items:center; gap:18px; }
+    #lobby h1 { font-size:32px; } #lobby h2 { font-size:18px; color:#aaa; font-weight:400; }
+    #lobby input { padding:12px 18px; font-size:16px; border-radius:8px; border:none; width:220px; text-align:center; }
+    .role-row { display:flex; gap:12px; }
+    .role-btn { padding:14px 28px; font-size:16px; font-weight:700; border:2px solid #555; background:#222; color:#fff; border-radius:8px; cursor:pointer; }
     .role-btn.seeker-on { border-color:#f55; background:#411; }
     .role-btn.hider-on { border-color:#4c4; background:#142; }
-    #players { min-height:50px; text-align:center; color:#aaa; line-height:1.8; font-size:14px; margin:4px 0; }
-    #startBtn { padding:16px 40px; font-size:20px; font-weight:700; border:none; border-radius:12px; background:#2a7; color:#fff; cursor:pointer; transition:background .2s; }
+    #players { min-height:40px; text-align:center; color:#aaa; line-height:1.8; font-size:14px; }
+    #startBtn { padding:16px 40px; font-size:20px; font-weight:700; border:none; border-radius:12px; background:#2a7; color:#fff; cursor:pointer; }
     #startBtn:disabled { background:#333; color:#666; cursor:default; }
     #status { color:#ff0; font-size:14px; min-height:20px; }
+
+    /* Game (hidden until started) */
+    #gameWrap { display:none; width:100%; height:100%; position:fixed; inset:0; }
+    #gameWrap.active { display:block; }
   </style>
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <h1>RoRo Hide &amp; Seek</h1>
-  <h2>Multiplayer</h2>
-  <input type="text" id="nameInput" placeholder="Enter your name" maxlength="16">
-  <div class="role-row">
-    <button class="role-btn" id="seekerBtn">Seeker</button>
-    <button class="role-btn" id="hiderBtn">Hider</button>
+
+  <!-- LOBBY -->
+  <div id="lobby">
+    <h1>RoRo Hide &amp; Seek</h1>
+    <h2>Multiplayer</h2>
+    <input type="text" id="nameInput" placeholder="Enter your name" maxlength="16">
+    <div class="role-row">
+      <button class="role-btn" id="seekerBtn">Seeker</button>
+      <button class="role-btn" id="hiderBtn">Hider</button>
+    </div>
+    <div id="players"></div>
+    <button id="startBtn" disabled>Start Game</button>
+    <div id="status"></div>
   </div>
-  <div id="players"></div>
-  <button id="startBtn" disabled>Start Game</button>
-  <div id="status"></div>
+
+  <!-- GAME CONTAINER (hidden until game starts) -->
+  <div id="gameWrap">
+    <canvas id="gameCanvas"></canvas>
+    <div id="hud">
+      <div id="statusBar"><span id="phaseText"></span><span id="chancesText"></span></div>
+      <div id="joystickZone"><div id="joystickBase"><div id="joystickKnob"></div></div></div>
+      <div id="hideZone"><button id="hideBtn">HIDE</button></div>
+      <div id="blindfold" class="hidden"><div id="blindfoldInner">Hiders are hiding...<br><span id="bfTimer"></span></div></div>
+    </div>
+    <div id="gameOverScreen" class="hidden"><h1 id="winnerText"></h1><button id="btnAgain">Play Again</button></div>
+    <div id="toast" class="hidden"></div>
+  </div>
 
   <script>
+    // ===== LOBBY LOGIC (plain JS, no modules) =====
+    const lobby = document.getElementById('lobby');
+    const gameWrap = document.getElementById('gameWrap');
     const nameInput = document.getElementById('nameInput');
     const seekerBtn = document.getElementById('seekerBtn');
     const hiderBtn = document.getElementById('hiderBtn');
@@ -41,9 +67,12 @@
     const playersDiv = document.getElementById('players');
     const statusDiv = document.getElementById('status');
 
-    let ws, myId = null, myRole = null;
+    let ws, myId = null, myRole = null, gameStarted = false;
 
-    function send(msg) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg)); }
+    function wsSend(msg) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg)); }
+
+    // Expose ws + role for game modules
+    window.__roro = { getWs: () => ws, getId: () => myId, getRole: () => myRole, send: wsSend };
 
     function connect() {
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -51,51 +80,58 @@
       ws.onopen = () => {
         statusDiv.textContent = 'Connected!';
         const name = nameInput.value.trim();
-        if (name) send({ type: 'setName', name });
+        if (name) wsSend({ type: 'setName', name });
       };
       ws.onmessage = (e) => {
         const msg = JSON.parse(e.data);
-        if (msg.type === 'welcome') {
-          myId = msg.id;
-          updatePlayers(msg.players);
-          if (msg.phase !== 'lobby') {
-            window.location.href = '/game.html';
-          }
-        }
+        if (msg.type === 'welcome') { myId = msg.id; updatePlayers(msg.players); }
         if (msg.type === 'allPlayers') updatePlayers(msg.players);
-        if (msg.type === 'phaseChange' && msg.phase === 'hiding') {
-          window.location.href = '/game.html';
+        if (msg.type === 'phaseChange' && msg.phase === 'hiding' && !gameStarted) launchGame();
+        if (msg.type === 'reset') {
+          gameStarted = false;
+          gameWrap.classList.remove('active');
+          lobby.style.display = 'flex';
+          document.body.style.background = '#1a1a2e';
         }
+        // Forward to game module if loaded
+        if (window.__roroOnMsg) window.__roroOnMsg(msg);
       };
       ws.onerror = () => { statusDiv.textContent = 'Connection error...'; };
-      ws.onclose = () => { statusDiv.textContent = 'Disconnected. Reconnecting...'; setTimeout(connect, 2000); };
+      ws.onclose = () => { statusDiv.textContent = 'Reconnecting...'; setTimeout(connect, 2000); };
     }
 
     function updatePlayers(list) {
       let hasSeeker = false, hasHider = false;
-      const lines = list.map(p => {
-        const tag = p.id === myId ? ' (you)' : '';
-        const role = p.role ? ' [' + p.role + ']' : '';
+      playersDiv.innerHTML = list.map(p => {
         if (p.role === 'seeker') hasSeeker = true;
         if (p.role === 'hider') hasHider = true;
-        return p.name + role + tag;
-      });
-      playersDiv.innerHTML = lines.join('<br>');
+        if (p.id === myId && p.role) myRole = p.role;
+        return p.name + (p.role ? ' [' + p.role + ']' : '') + (p.id === myId ? ' (you)' : '');
+      }).join('<br>');
       startBtn.disabled = !(hasSeeker && hasHider);
     }
 
-    nameInput.addEventListener('input', () => send({ type: 'setName', name: nameInput.value.trim() }));
+    function launchGame() {
+      gameStarted = true;
+      lobby.style.display = 'none';
+      document.body.style.background = '#000';
+      gameWrap.classList.add('active');
+      // Dynamically load game module (only once)
+      if (!document.getElementById('gameScript')) {
+        const im = document.createElement('script');
+        im.type = 'importmap';
+        im.textContent = JSON.stringify({ imports: { three: 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js' } });
+        document.head.appendChild(im);
+        const sc = document.createElement('script');
+        sc.type = 'module'; sc.src = '/game.js'; sc.id = 'gameScript';
+        document.body.appendChild(sc);
+      }
+    }
 
-    seekerBtn.addEventListener('click', () => {
-      send({ type: 'setRole', role: 'seeker' }); myRole = 'seeker';
-      seekerBtn.classList.add('seeker-on'); hiderBtn.classList.remove('hider-on');
-    });
-    hiderBtn.addEventListener('click', () => {
-      send({ type: 'setRole', role: 'hider' }); myRole = 'hider';
-      hiderBtn.classList.add('hider-on'); seekerBtn.classList.remove('seeker-on');
-    });
-
-    startBtn.addEventListener('click', () => send({ type: 'startGame' }));
+    nameInput.addEventListener('input', () => wsSend({ type: 'setName', name: nameInput.value.trim() }));
+    seekerBtn.addEventListener('click', () => { wsSend({ type: 'setRole', role: 'seeker' }); myRole = 'seeker'; seekerBtn.classList.add('seeker-on'); hiderBtn.classList.remove('hider-on'); });
+    hiderBtn.addEventListener('click', () => { wsSend({ type: 'setRole', role: 'hider' }); myRole = 'hider'; hiderBtn.classList.add('hider-on'); seekerBtn.classList.remove('seeker-on'); });
+    startBtn.addEventListener('click', () => wsSend({ type: 'startGame' }));
 
     connect();
   </script>
