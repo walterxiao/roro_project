@@ -101,48 +101,145 @@ addWall(0.2, ROOM_H, GARAGE_D, 16, ROOM_H / 2, GARAGE_Z);  // right
 const garageLight = new THREE.PointLight(0xffffff, 1.2, 12);
 garageLight.position.set(GARAGE_X, 3.5, GARAGE_Z); garageLight.castShadow = true; scene.add(garageLight);
 
-// ---- CAR ----
-const carGroup = new THREE.Group();
-carGroup.position.set(GARAGE_X + 1, 0, GARAGE_Z - 0.5);
-carGroup.rotation.y = Math.PI; // face the door
+// ---- CAR FACTORY ----
+function createCar(bodyColor) {
+  const g = new THREE.Group();
+  const bodyMat = mat(bodyColor);
+  const winMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2a, metalness: 0.5, roughness: 0.2 });
+  const tireMat = mat(0x111111);
+  const rimMat = mat(0xaaaaaa);
+  const silver = mat(0xbbbbbb);
+  const red = mat(0xdd2222);
+  const white = mat(0xffffdd);
 
-const carBodyMat = mat(0xCC2222);
-const carWindowMat = mat(0x222233);
-const wheelMat = mat(0x111111);
+  // Lower body (chassis)
+  const lower = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.25, 4.0), bodyMat);
+  lower.position.y = 0.35; lower.castShadow = true; g.add(lower);
 
-// Body (main)
-const carBody = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.5, 4.2), carBodyMat);
-carBody.position.y = 0.5; carBody.castShadow = true; carGroup.add(carBody);
+  // Hood (lower than cabin)
+  const hood = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.2, 1.3), bodyMat);
+  hood.position.set(0, 0.6, 1.15); hood.castShadow = true; g.add(hood);
 
-// Cabin (top)
-const carCabin = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.6, 2.2), carBodyMat);
-carCabin.position.set(0, 1.05, 0); carCabin.castShadow = true; carGroup.add(carCabin);
+  // Trunk
+  const trunk = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.2, 1.2), bodyMat);
+  trunk.position.set(0, 0.6, -1.2); trunk.castShadow = true; g.add(trunk);
 
-// Windshield (front)
-const windF = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.5, 0.06), carWindowMat);
-windF.position.set(0, 1.1, 1.05); carGroup.add(windF);
-// Rear window
-const windR = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.5, 0.06), carWindowMat);
-windR.position.set(0, 1.1, -1.05); carGroup.add(windR);
-// Side windows
-const windL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.4, 2.0), carWindowMat);
-windL.position.set(-0.88, 1.1, 0); carGroup.add(windL);
-const windSR = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.4, 2.0), carWindowMat);
-windSR.position.set(0.88, 1.1, 0); carGroup.add(windSR);
+  // Cabin (raised section)
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.55, 1.8), bodyMat);
+  cabin.position.set(0, 0.95, -0.05); cabin.castShadow = true; g.add(cabin);
 
-// Wheels
-const wheelGeo = new THREE.BoxGeometry(0.4, 0.5, 0.5);
-[[-1.0, 0.25, 1.3], [1.0, 0.25, 1.3], [-1.0, 0.25, -1.3], [1.0, 0.25, -1.3]].forEach(([x, y, z]) => {
-  const w = new THREE.Mesh(wheelGeo, wheelMat); w.position.set(x, y, z); w.castShadow = true; carGroup.add(w);
-});
+  // Roof (slightly smaller and flat on top)
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 1.55), mat(bodyColor));
+  roof.position.set(0, 1.25, -0.05); g.add(roof);
 
-// Headlights
-const headMat = mat(0xffffcc);
-const headL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.06), headMat);
-headL.position.set(-0.6, 0.55, 2.1); carGroup.add(headL);
-const headR = headL.clone(); headR.position.set(0.6, 0.55, 2.1); carGroup.add(headR);
+  // Windshield (slanted front)
+  const ws = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.55, 0.04), winMat);
+  ws.position.set(0, 1.0, 0.88); ws.rotation.x = -0.25; g.add(ws);
+  // Rear window (slanted back)
+  const rw = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.5, 0.04), winMat);
+  rw.position.set(0, 1.0, -0.98); rw.rotation.x = 0.25; g.add(rw);
+  // Side windows
+  const sL = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.4, 1.5), winMat);
+  sL.position.set(-0.88, 1.05, -0.05); g.add(sL);
+  const sR = sL.clone(); sR.position.x = 0.88; g.add(sR);
 
+  // Wheels (with rim detail)
+  [[-0.95, 0.3, 1.25], [0.95, 0.3, 1.25], [-0.95, 0.3, -1.25], [0.95, 0.3, -1.25]].forEach(([x, y, z]) => {
+    const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.3, 12), tireMat);
+    tire.rotation.z = Math.PI / 2;
+    tire.position.set(x, y, z); tire.castShadow = true; g.add(tire);
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.32, 8), rimMat);
+    rim.rotation.z = Math.PI / 2;
+    rim.position.set(x, y, z); g.add(rim);
+  });
+
+  // Front bumper
+  const fb = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.12, 0.25), silver);
+  fb.position.set(0, 0.35, 2.0); g.add(fb);
+  // Rear bumper
+  const bb = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.12, 0.25), silver);
+  bb.position.set(0, 0.35, -2.0); g.add(bb);
+
+  // Grille (dark mesh at front)
+  const grille = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.18, 0.05), mat(0x222222));
+  grille.position.set(0, 0.5, 2.02); g.add(grille);
+
+  // Headlights
+  const hL = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.16, 0.05), white);
+  hL.position.set(-0.6, 0.55, 2.02); g.add(hL);
+  const hR = hL.clone(); hR.position.x = 0.6; g.add(hR);
+
+  // Tail lights
+  const tL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.14, 0.05), red);
+  tL.position.set(-0.6, 0.58, -2.02); g.add(tL);
+  const tR = tL.clone(); tR.position.x = 0.6; g.add(tR);
+
+  // Side mirrors
+  const mirGeo = new THREE.BoxGeometry(0.1, 0.12, 0.18);
+  const mL = new THREE.Mesh(mirGeo, bodyMat); mL.position.set(-0.98, 1.0, 0.55); g.add(mL);
+  const mR = new THREE.Mesh(mirGeo, bodyMat); mR.position.set(0.98, 1.0, 0.55); g.add(mR);
+
+  return g;
+}
+
+// Red car (right side of garage)
+const carGroup = createCar(0xCC2222);
+carGroup.position.set(14, 0, -9);
+carGroup.rotation.y = Math.PI; // face door
 scene.add(carGroup);
+
+// Blue car (left side of garage)
+const carGroup2 = createCar(0x2244CC);
+carGroup2.position.set(10, 0, -9);
+carGroup2.rotation.y = Math.PI;
+scene.add(carGroup2);
+
+// ---- BIKE ----
+const bikeGroup = new THREE.Group();
+const bikeFrameMat = mat(0x22AA66);
+const bikeTireMat = mat(0x1a1a1a);
+const bikeAccentMat = mat(0x222222);
+
+// Wheels (cylinders, facing sideways)
+const bwGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.08, 16);
+const bwFront = new THREE.Mesh(bwGeo, bikeTireMat);
+bwFront.rotation.z = Math.PI / 2;
+bwFront.position.set(0, 0.3, 0.7); bwFront.castShadow = true; bikeGroup.add(bwFront);
+const bwRear = new THREE.Mesh(bwGeo, bikeTireMat);
+bwRear.rotation.z = Math.PI / 2;
+bwRear.position.set(0, 0.3, -0.7); bwRear.castShadow = true; bikeGroup.add(bwRear);
+
+// Top tube
+const topTube = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.9), bikeFrameMat);
+topTube.position.set(0, 0.7, 0); bikeGroup.add(topTube);
+// Down tube (diagonal)
+const downTube = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.9, 0.05), bikeFrameMat);
+downTube.position.set(0, 0.5, 0.15); downTube.rotation.x = -0.5; bikeGroup.add(downTube);
+// Seat tube
+const seatTube = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.55, 0.05), bikeFrameMat);
+seatTube.position.set(0, 0.5, -0.5); bikeGroup.add(seatTube);
+// Chain stay
+const chainStay = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.55), bikeFrameMat);
+chainStay.position.set(0, 0.3, -0.35); bikeGroup.add(chainStay);
+
+// Seat
+const seat = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.08, 0.4), bikeAccentMat);
+seat.position.set(0, 0.82, -0.5); seat.castShadow = true; bikeGroup.add(seat);
+
+// Handlebar post
+const hPost = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.4, 0.05), bikeFrameMat);
+hPost.position.set(0, 0.85, 0.55); bikeGroup.add(hPost);
+// Handlebar
+const hBar = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.05, 0.05), bikeAccentMat);
+hBar.position.set(0, 1.05, 0.55); bikeGroup.add(hBar);
+
+// Pedal crank
+const pedal = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.05, 0.05), bikeAccentMat);
+pedal.position.set(0, 0.3, -0.15); bikeGroup.add(pedal);
+
+bikeGroup.position.set(9, 0, -12);
+bikeGroup.rotation.y = Math.PI / 2; // turned sideways
+scene.add(bikeGroup);
 
 // Fireplace
 const brickMat = mat(0x8B3A2A), darkMat = mat(0x1a1a1a);
@@ -199,7 +296,9 @@ const hideables = [
   { group: sofaGroup, pos: sofaGroup.position.clone(), name: 'Sofa' },
   { group: tvGroup, pos: tvGroup.position.clone(), name: 'TV' },
   { group: fpGroup, pos: fpGroup.position.clone(), name: 'Fireplace' },
-  { group: carGroup, pos: carGroup.position.clone(), name: 'Car' },
+  { group: carGroup, pos: carGroup.position.clone(), name: 'Red Car' },
+  { group: carGroup2, pos: carGroup2.position.clone(), name: 'Blue Car' },
+  { group: bikeGroup, pos: bikeGroup.position.clone(), name: 'Bike' },
 ];
 chairGroups.forEach((g, i) => hideables.push({ group: g, pos: g.position.clone(), name: 'Chair ' + (i+1) }));
 
@@ -226,8 +325,12 @@ const colliders = [
   { min: new THREE.Vector3(3.3, 0, -3.8), max: new THREE.Vector3(5.7, 2.3, -3.2) },
   { min: new THREE.Vector3(-.8, 0, -.2), max: new THREE.Vector3(2.8, 1.2, 2) },
   { min: new THREE.Vector3(tableX-2.4, 0, -1.3), max: new THREE.Vector3(tableX+2.4, 1, 1.3) },
-  // Car
-  { min: new THREE.Vector3(11.8, 0, -12), max: new THREE.Vector3(14.2, 1.5, -7.5) },
+  // Red car
+  { min: new THREE.Vector3(13.0, 0, -11.0), max: new THREE.Vector3(15.0, 1.3, -7.0) },
+  // Blue car
+  { min: new THREE.Vector3(9.0, 0, -11.0), max: new THREE.Vector3(11.0, 1.3, -7.0) },
+  // Bike
+  { min: new THREE.Vector3(8.5, 0, -12.7), max: new THREE.Vector3(9.5, 1.1, -11.3) },
   ...chairColliders,
 ];
 

@@ -153,31 +153,50 @@
     function startWheel(players, seekerId, duration) {
       wheelOverlay.style.display = 'flex';
       wheelResult.textContent = '';
+      wheelName.style.transform = 'scale(1)';
+      wheelName.style.transition = 'transform .15s ease-out, background-color .15s';
       const names = players.map(p => p.name);
-      const seekerName = (players.find(p => p.id === seekerId) || {}).name || '?';
+      const seekerIdx = players.findIndex(p => p.id === seekerId);
+      const seekerName = names[seekerIdx] || '?';
+
+      // How many total steps should we cycle through before landing?
+      // Use easeOutQuint so it decelerates smoothly
+      const totalCycles = 4; // full loops before settling
+      const totalSteps = totalCycles * names.length + seekerIdx + names.length * 2;
       const start = performance.now();
-      let lastIndex = -1;
+      let lastShownStep = -1;
+
+      function easeOutQuint(t) { return 1 - Math.pow(1 - t, 5); }
 
       function tick(now) {
-        const t = (now - start) / duration; // 0 to 1
-        if (t >= 1) {
+        const t = Math.min(1, (now - start) / duration);
+        // progress maps 0→0 and 1→totalSteps with easing
+        const progress = easeOutQuint(t);
+        const step = Math.floor(progress * totalSteps);
+        if (step !== lastShownStep) {
+          lastShownStep = step;
+          const idx = step % names.length;
+          wheelName.textContent = names[idx];
+          // Pulse effect on each change — more intense earlier, gentle near end
+          const pulse = 1.0 + (1 - t) * 0.2;
+          wheelName.style.transform = `scale(${pulse})`;
+          // Color flash earlier, settle near end
+          wheelName.style.backgroundColor = `rgba(255, 255, 0, ${0.05 + (1 - t) * 0.15})`;
+        }
+        if (t < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          // Landed — final glow
           wheelName.textContent = seekerName;
-          wheelName.style.transform = 'scale(1.3)';
+          wheelName.style.transform = 'scale(1.35)';
+          wheelName.style.backgroundColor = 'rgba(255, 255, 0, 0.3)';
           wheelResult.textContent = seekerName + ' is the SEEKER!';
           setTimeout(() => {
             wheelOverlay.style.display = 'none';
             wheelName.style.transform = 'scale(1)';
+            wheelName.style.backgroundColor = '';
           }, 1500);
-          return;
         }
-        // Cycle names rapidly, slow down near the end
-        const speed = 1 - t * t; // quadratic easing out
-        const stepMs = 50 + (1 - speed) * 300;
-        if ((now - start) % stepMs < 20 || lastIndex < 0) {
-          lastIndex = (lastIndex + 1) % names.length;
-          wheelName.textContent = names[lastIndex];
-        }
-        requestAnimationFrame(tick);
       }
       requestAnimationFrame(tick);
     }

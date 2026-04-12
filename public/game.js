@@ -325,16 +325,24 @@ function animate() {
 
   // --- CAMERA ---
   if (isHiding && hiddenIn) {
-    // Bird's-eye
-    const inD = hiddenIn.pos.x > ROOM_W / 2;
-    const rw = inD ? DINING_W : ROOM_W;
-    const rcx = inD ? ROOM_W / 2 + DINING_W / 2 : 0;
+    // Pick the room the hideable is in, center the bird's-eye accordingly
+    let rcx, rcz = 0, rw, rd = ROOM_D;
+    if (hiddenIn.pos.z < -5) {
+      // Garage
+      rcx = 12; rcz = -9; rw = 8; rd = 8;
+    } else if (hiddenIn.pos.x > ROOM_W / 2) {
+      // Dining room
+      rcx = ROOM_W / 2 + DINING_W / 2; rw = DINING_W;
+    } else {
+      // Living room
+      rcx = 0; rw = ROOM_W;
+    }
     const fov = camera.fov / 2 * Math.PI / 180;
-    const nH = (ROOM_D / 2) / Math.tan(fov);
+    const nH = (rd / 2) / Math.tan(fov);
     const nW = (rw / 2) / (Math.tan(fov) * camera.aspect);
     const camY = Math.max(nH, nW) + 2;
-    camera.position.lerp(new THREE.Vector3(rcx, camY, 0), 3 * dt);
-    camera.lookAt(rcx, 0, 0);
+    camera.position.lerp(new THREE.Vector3(rcx, camY, rcz), 3 * dt);
+    camera.lookAt(rcx, 0, rcz);
   } else if (!seekerBlind) {
     const cd = 6, ch = 3.5;
     const tp = new THREE.Vector3(charPos.x + Math.sin(charRotY) * -cd, charPos.y + ch, charPos.z + Math.cos(charRotY) * -cd);
