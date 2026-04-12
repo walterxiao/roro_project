@@ -154,15 +154,17 @@ const chairGroups = [];
 
 function addDiningChair(cx, cz, facingAngle) {
   const chairGrp = new THREE.Group();
+  const myChairMat = dChairMat.clone();
+  const myLegMat = dChairLegMat.clone();
 
   // Seat
-  const cSeat = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 0.8), dChairMat);
+  const cSeat = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 0.8), myChairMat);
   cSeat.position.y = 0.55;
   cSeat.castShadow = true;
   chairGrp.add(cSeat);
 
   // Backrest
-  const cBack = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.08), dChairMat);
+  const cBack = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.08), myChairMat);
   cBack.position.set(0, 1.0, -0.36);
   cBack.castShadow = true;
   chairGrp.add(cBack);
@@ -170,7 +172,7 @@ function addDiningChair(cx, cz, facingAngle) {
   // 4 legs
   const cLegGeo = new THREE.BoxGeometry(0.07, 0.5, 0.07);
   [[-0.32, 0.25, -0.32], [0.32, 0.25, -0.32], [-0.32, 0.25, 0.32], [0.32, 0.25, 0.32]].forEach(([lx, ly, lz]) => {
-    const cLeg = new THREE.Mesh(cLegGeo, dChairLegMat);
+    const cLeg = new THREE.Mesh(cLegGeo, myLegMat);
     cLeg.position.set(lx, ly, lz);
     cLeg.castShadow = true;
     chairGrp.add(cLeg);
