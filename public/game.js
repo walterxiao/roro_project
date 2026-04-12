@@ -161,8 +161,11 @@ setOnMessage((msg) => {
 
   if (msg.type === 'shake') {
     // Trigger shake animation on listed furniture for everyone
+    const duration = msg.duration || 1.0;
     for (const fi of msg.furnitureIndices) {
-      shaking.set(fi, 1.0); // 1 second of shake
+      // Don't override a longer shake with a shorter one
+      const current = shaking.get(fi) || 0;
+      shaking.set(fi, Math.max(current, duration));
     }
   }
 

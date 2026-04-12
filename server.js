@@ -20,6 +20,7 @@ let seekerChances = 3;
 let hideCountdown = 0;
 let hideTimer = null;
 let shakeTimer = null;
+let proxShakeTimer = null;
 let seekTimer = null;
 let seekCountdown = 0;
 const HIDE_TIME = 30;
@@ -47,6 +48,7 @@ function endGame(winner, reason) {
   phase = 'gameover';
   if (hideTimer) { clearInterval(hideTimer); hideTimer = null; }
   if (shakeTimer) { clearInterval(shakeTimer); shakeTimer = null; }
+  if (proxShakeTimer) { clearInterval(proxShakeTimer); proxShakeTimer = null; }
   if (seekTimer) { clearInterval(seekTimer); seekTimer = null; }
   broadcast({ type: 'gameOver', winner, reason });
   // Auto-reset to lobby after 3 seconds
@@ -67,12 +69,37 @@ function resetGame() {
   phase = 'lobby'; seekerChances = 3; hideCountdown = 0; seekCountdown = 0;
   if (hideTimer) { clearInterval(hideTimer); hideTimer = null; }
   if (shakeTimer) { clearInterval(shakeTimer); shakeTimer = null; }
+  if (proxShakeTimer) { clearInterval(proxShakeTimer); proxShakeTimer = null; }
   if (seekTimer) { clearInterval(seekTimer); seekTimer = null; }
   for (const p of players.values()) {
     p.role = null; p.isHiding = false; p.hiddenFurniture = -1; p.isFound = false;
     p.pos = { x: 0, z: 2 }; p.rot = 0;
   }
   broadcast({ type: 'reset', players: allPub() });
+}
+
+function startProxShakeTimer() {
+  if (proxShakeTimer) return;
+  // Every 2s, check seeker distance to each hiding hider; closer = higher shake chance
+  const PROX_RANGE = 3.5;
+  proxShakeTimer = setInterval(() => {
+    if (phase !== 'seeking') return;
+    const seeker = [...players.values()].find(p => p.role === 'seeker');
+    if (!seeker) return;
+    const occupied = new Set();
+    for (const p of players.values()) {
+      if (p.role !== 'hider' || !p.isHiding || p.isFound) continue;
+      const dx = seeker.pos.x - p.pos.x, dz = seeker.pos.z - p.pos.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist < PROX_RANGE) {
+        const chance = 0.6 * (1 - dist / PROX_RANGE);
+        if (Math.random() < chance) occupied.add(p.hiddenFurniture);
+      }
+    }
+    if (occupied.size > 0) {
+      broadcast({ type: 'shake', furnitureIndices: [...occupied], duration: 0.3 });
+    }
+  }, 2000);
 }
 
 function startShakeTimer() {
@@ -144,6 +171,7 @@ wss.on('connection', (ws) => {
             phase = 'seeking';
             seekCountdown = SEEK_TIME;
             broadcast({ type: 'phaseChange', phase: 'seeking', seekerChances, seekCountdown });
+            startProxShakeTimer();
             seekTimer = setInterval(() => {
               seekCountdown--;
               broadcast({ type: 'seekCountdown', seekCountdown });
