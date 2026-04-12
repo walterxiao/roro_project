@@ -217,7 +217,7 @@ const sofaLegGeo = new THREE.BoxGeometry(0.1, 0.35, 0.1);
 
 // Position sofa in room center, angled to face both fireplace and TV
 sofaGroup.position.set(1, 0, 1);
-sofaGroup.rotation.y = -0.4; // angled toward fireplace + TV area
+sofaGroup.rotation.y = Math.PI - 0.4; // backrest faces room entrance, seats face fireplace + TV
 scene.add(sofaGroup);
 
 // ========== RUG ==========
