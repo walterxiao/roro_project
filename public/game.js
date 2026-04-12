@@ -296,6 +296,7 @@ let velY = 0;
 const GRAVITY = -15;
 const JUMP_VEL = 6;
 const MOVE_SPEED = 4;
+const TURN_SPEED = 3;
 let isGrounded = true;
 let walkTime = 0;
 
@@ -441,9 +442,6 @@ function animate() {
   if (keys['d'] || keys['arrowright']) inputX = 1;
   if (keys[' ']) jumpPressed = true;
 
-  const inputLen = Math.sqrt(inputX * inputX + inputZ * inputZ);
-  const isMoving = inputLen > 0.15;
-
   // --- Jump ---
   if (jumpPressed && isGrounded) {
     velY = JUMP_VEL;
@@ -460,16 +458,20 @@ function animate() {
     isGrounded = true;
   }
 
-  // --- Movement ---
-  if (isMoving) {
-    const moveX = (inputX / inputLen) * MOVE_SPEED * dt;
-    const moveZ = (inputZ / inputLen) * MOVE_SPEED * dt;
-    charPos.x += moveX;
-    charPos.z += moveZ;
-
-    // Face movement direction
-    charRotY = Math.atan2(moveX, moveZ);
+  // --- Movement (tank-style: left/right turns, up/down moves forward/back) ---
+  // Turn
+  if (Math.abs(inputX) > 0.15) {
+    charRotY -= inputX * TURN_SPEED * dt;
   }
+
+  // Move forward/backward relative to facing direction
+  if (Math.abs(inputZ) > 0.15) {
+    const forward = -inputZ; // joystick up (negative Y) = forward
+    charPos.x += Math.sin(charRotY) * forward * MOVE_SPEED * dt;
+    charPos.z += Math.cos(charRotY) * forward * MOVE_SPEED * dt;
+  }
+
+  const isMoving = Math.abs(inputX) > 0.15 || Math.abs(inputZ) > 0.15;
 
   // Collision
   resolveCollision(charPos, 0.4);
@@ -494,9 +496,15 @@ function animate() {
     legMeshR.rotation.x = 0;
   }
 
-  // --- Camera follow ---
-  const targetCamPos = new THREE.Vector3().copy(charPos).add(CAM_OFFSET);
-  camera.position.lerp(targetCamPos, 5 * dt);
+  // --- Camera follow (behind character) ---
+  const camDist = 6;
+  const camHeight = 3.5;
+  const targetCamPos = new THREE.Vector3(
+    charPos.x + Math.sin(charRotY) * -camDist,
+    charPos.y + camHeight,
+    charPos.z + Math.cos(charRotY) * -camDist
+  );
+  camera.position.lerp(targetCamPos, 4 * dt);
   const lookTarget = new THREE.Vector3(charPos.x, charPos.y + 1.5, charPos.z);
   camera.lookAt(lookTarget);
 
