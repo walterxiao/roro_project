@@ -63,17 +63,25 @@ floor.receiveShadow = true;
 scene.add(floor);
 
 // Ceiling
-const ceiling = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.2, ROOM_D), ceilingMat);
+const ceilingMatInstance = ceilingMat.clone();
+ceilingMatInstance.transparent = true;
+ceilingMatInstance.opacity = 1;
+const ceiling = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.2, ROOM_D), ceilingMatInstance);
 ceiling.position.set(0, ROOM_H + 0.1, 0);
 scene.add(ceiling);
 
-// Walls
+// Walls (and ceiling — anything that can block camera view)
+const walls = [ceiling];
 function addWall(w, h, d, x, y, z) {
-  const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat);
+  const wallMatInstance = wallMat.clone();
+  wallMatInstance.transparent = true;
+  wallMatInstance.opacity = 1;
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMatInstance);
   wall.position.set(x, y, z);
   wall.receiveShadow = true;
   wall.castShadow = true;
   scene.add(wall);
+  walls.push(wall);
   return wall;
 }
 
@@ -507,6 +515,19 @@ function animate() {
   camera.position.lerp(targetCamPos, 4 * dt);
   const lookTarget = new THREE.Vector3(charPos.x, charPos.y + 1.5, charPos.z);
   camera.lookAt(lookTarget);
+
+  // --- Hide walls blocking the view ---
+  const charCenter = new THREE.Vector3(charPos.x, charPos.y + 1.0, charPos.z);
+  const rayDir = new THREE.Vector3().subVectors(charCenter, camera.position).normalize();
+  const rayDist = camera.position.distanceTo(charCenter);
+  const raycaster = new THREE.Raycaster(camera.position, rayDir, 0, rayDist);
+  const hits = raycaster.intersectObjects(walls);
+  const blockers = new Set(hits.map(h => h.object));
+
+  for (const wall of walls) {
+    const targetOpacity = blockers.has(wall) ? 0.15 : 1;
+    wall.material.opacity += (targetOpacity - wall.material.opacity) * Math.min(10 * dt, 1);
+  }
 
   // --- Fire animation ---
   const t = clock.elapsedTime;
