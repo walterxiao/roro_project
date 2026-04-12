@@ -1,7 +1,7 @@
 import { THREE, renderer, scene, camera, fireLight } from './scene.js';
 import { ROOM_W, ROOM_D, ROOM_H, DINING_W, walls, hideables, colliders, fireParts, tvGlow } from './room.js';
 import { createCharacter, animateWalk } from './character.js';
-import { getInput, getLook } from './controls.js';
+import { getInput, getLook, decayLook } from './controls.js';
 import { send, getMyId, getMyRole, setOnMessage, showToast } from './network.js';
 
 // ========== STATE ==========
@@ -345,6 +345,7 @@ function animate() {
       charPos.z += Math.cos(charRotY) * fwd * MOVE_SPEED * dt;
     }
     isMoving = Math.abs(input.x) > .15 || Math.abs(input.z) > .15;
+    if (isMoving) decayLook(dt, 6);
     resolveCollision(charPos, .4);
     myChar.group.position.copy(charPos);
     myChar.group.rotation.y = charRotY;

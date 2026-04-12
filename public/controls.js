@@ -95,3 +95,13 @@ export function getInput() {
 export function getLook() {
   return { yaw: lookYaw, pitch: lookPitch };
 }
+
+// Smoothly decay look offsets back to 0 (called when player is moving)
+export function decayLook(dt, rate = 6) {
+  if (dragActive) return; // don't fight the user's drag
+  const k = 1 - Math.exp(-rate * dt);
+  lookYaw += (0 - lookYaw) * k;
+  lookPitch += (0 - lookPitch) * k;
+  if (Math.abs(lookYaw) < 0.001) lookYaw = 0;
+  if (Math.abs(lookPitch) < 0.001) lookPitch = 0;
+}
