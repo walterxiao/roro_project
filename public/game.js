@@ -647,15 +647,10 @@ function animate() {
       hiddenIn.group.rotation.z = 0;
     }
 
-    // Camera stays fixed on the furniture while hiding
-    const furnitureCenter = new THREE.Vector3(hiddenIn.pos.x, 1.5, hiddenIn.pos.z);
-    const targetCamPos = new THREE.Vector3(
-      hiddenIn.pos.x + 4,
-      3.5,
-      hiddenIn.pos.z + 4
-    );
+    // Bird's-eye camera looking straight down at the room
+    const targetCamPos = new THREE.Vector3(5, 18, 0);
     camera.position.lerp(targetCamPos, 3 * dt);
-    camera.lookAt(furnitureCenter);
+    camera.lookAt(5, 0, 0);
   }
 
   // --- NORMAL MOVEMENT (only when not hiding) ---
