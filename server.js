@@ -134,8 +134,9 @@ wss.on('connection', (ws) => {
         p.isHiding = false; p.hiddenFurniture = -1; p.isFound = false;
       }
       phase = 'hiding'; seekerChances = 3; hideCountdown = HIDE_TIME;
-      broadcast({ type: 'phaseChange', phase: 'hiding', hideCountdown, seekerChances });
+      // Send role assignments FIRST so clients know their role when phaseChange arrives
       broadcastPlayers();
+      broadcast({ type: 'phaseChange', phase: 'hiding', hideCountdown, seekerChances });
       startShakeTimer();
       hideTimer = setInterval(() => {
         hideCountdown--;

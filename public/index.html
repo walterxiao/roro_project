@@ -97,8 +97,9 @@
         if (msg.type === 'allPlayers') updatePlayers(msg.players, msg.nextSeekerId);
         if (msg.type === 'phaseChange') {
           if (msg.phase === 'hiding' && !gameStarted) {
-            // If we already picked a role, launch game. Otherwise stay in lobby with notice.
-            if (myRole) launchGame();
+            // Everyone present gets a role auto-assigned, so always launch the game
+            const meInList = currentPlayers.some(p => p.id === myId && p.role);
+            if (meInList) launchGame();
             else updateLobbyForPhase('hiding');
           } else {
             updateLobbyForPhase(msg.phase);
