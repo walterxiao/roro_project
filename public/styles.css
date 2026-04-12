@@ -1,19 +1,7 @@
 * { margin:0; padding:0; box-sizing:border-box; }
 html,body { width:100%; height:100%; overflow:hidden; background:#000; touch-action:none; -webkit-user-select:none; user-select:none; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; }
 .hidden { display:none !important; }
-#gameCanvas { display:block; width:100%; height:100%; position:relative; z-index:0; }
-
-/* LOBBY */
-#lobby { position:fixed; inset:0; background:rgba(0,0,0,.85); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; z-index:100; }
-#lobby h1 { font-size:26px; }
-#nameInput { padding:10px 16px; font-size:16px; border-radius:8px; border:none; width:200px; text-align:center; }
-#roleRow { display:flex; gap:12px; }
-.roleBtn { padding:12px 24px; font-size:16px; font-weight:700; border:2px solid #555; background:#222; color:#fff; border-radius:8px; cursor:pointer; }
-.roleBtn.active-seeker { border-color:#f44; background:#511; }
-.roleBtn.active-hider { border-color:#4a4; background:#153; }
-#playerList { min-height:40px; font-size:13px; color:#aaa; text-align:center; line-height:1.6; }
-#btnStart { padding:14px 36px; font-size:18px; font-weight:700; border:none; border-radius:10px; background:#2a7; color:#fff; cursor:pointer; }
-#btnStart:disabled { background:#444; color:#777; cursor:default; }
+#gameCanvas { display:block; width:100%; height:100%; }
 
 /* HUD */
 #hud { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:10; }

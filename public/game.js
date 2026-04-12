@@ -94,7 +94,8 @@ setOnMessage((msg) => {
   if (msg.type === 'welcome') {
     colorIdx = msg.id % 6;
     phase = msg.phase;
-    // Don't create character yet — wait for game to start
+    myChar = createCharacter(colorIdx);
+    myChar.group.position.copy(charPos);
     for (const p of msg.players) {
       if (p.id !== msg.id) addRemotePlayer(p);
     }
