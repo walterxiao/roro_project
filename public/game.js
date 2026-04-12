@@ -1,7 +1,7 @@
 import { THREE, renderer, scene, camera, fireLight } from './scene.js';
 import { ROOM_W, ROOM_D, ROOM_H, DINING_W, walls, hideables, colliders, fireParts, tvGlow } from './room.js';
 import { createCharacter, animateWalk } from './character.js';
-import { getInput } from './controls.js';
+import { getInput, getLook } from './controls.js';
 import { send, getMyId, getMyRole, setOnMessage, showToast } from './network.js';
 
 // ========== STATE ==========
@@ -472,7 +472,14 @@ function animate() {
     camera.lookAt(rcx, 0, rcz);
   } else if (!seekerBlind) {
     const cd = 6, ch = 3.5;
-    const tp = new THREE.Vector3(charPos.x + Math.sin(charRotY) * -cd, charPos.y + ch, charPos.z + Math.cos(charRotY) * -cd);
+    const look = getLook();
+    const yaw = charRotY + look.yaw;
+    const camH = ch + look.pitch * 3;
+    const tp = new THREE.Vector3(
+      charPos.x + Math.sin(yaw) * -cd,
+      charPos.y + camH,
+      charPos.z + Math.cos(yaw) * -cd
+    );
     camera.position.lerp(tp, 4 * dt);
     camera.lookAt(charPos.x, charPos.y + 1.5, charPos.z);
   }

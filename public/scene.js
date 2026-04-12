@@ -24,16 +24,17 @@ window.addEventListener('resize', () => {
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
-dirLight.position.set(2, 8, 4);
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(5, 14, 5);
 dirLight.castShadow = true;
-dirLight.shadow.mapSize.set(1024, 1024);
+dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.near = 0.5;
-dirLight.shadow.camera.far = 30;
-dirLight.shadow.camera.left = -10;
-dirLight.shadow.camera.right = 10;
-dirLight.shadow.camera.top = 10;
-dirLight.shadow.camera.bottom = -10;
+dirLight.shadow.camera.far = 60;
+dirLight.shadow.camera.left = -25;
+dirLight.shadow.camera.right = 25;
+dirLight.shadow.camera.top = 25;
+dirLight.shadow.camera.bottom = -25;
+dirLight.shadow.bias = -0.0005;
 scene.add(dirLight);
 
 const fireLight = new THREE.PointLight(0xff6622, 2, 8);
