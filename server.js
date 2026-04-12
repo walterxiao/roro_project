@@ -175,10 +175,10 @@ wss.on('connection', (ws) => {
       const found = [...players.values()].find(p => p.role === 'hider' && !p.isFound && p.isHiding && p.hiddenFurniture === fi);
       if (found) {
         found.isFound = true; found.isHiding = false;
-        broadcast({ type: 'searchResult', furnitureIndex: fi, found: true, hiderId: found.id, hiderName: found.name, seekerChances });
+        broadcast({ type: 'searchResult', seekerId: player.id, furnitureIndex: fi, found: true, hiderId: found.id, hiderName: found.name, seekerChances });
       } else {
         seekerChances--;
-        broadcast({ type: 'searchResult', furnitureIndex: fi, found: false, seekerChances });
+        broadcast({ type: 'searchResult', seekerId: player.id, furnitureIndex: fi, found: false, seekerChances });
       }
       checkGameOver();
     }

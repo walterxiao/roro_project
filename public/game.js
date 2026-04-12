@@ -14,6 +14,16 @@ let phase = 'lobby';
 let isHiding = false, hiddenIn = null;
 let nearestHideable = null;
 
+// Hit / bounce / dizzy state
+let hitTimer = 0;      // seconds remaining for hit animation
+let bounceVel = null;  // {x, z} velocity to push us back
+let bounceTime = 0;    // seconds remaining for bounce
+let dizzyTime = 0;     // seconds remaining for dizzy effect
+let dizzyStars = null; // THREE.Group for dizzy stars around head
+
+// Remote seeker effects: id -> { hitTimer, bounceVel, bounceTime, dizzyTime, dizzyStars }
+const remoteFx = new Map();
+
 // Shake state: { furnitureIndex -> remaining seconds }
 const shaking = new Map();
 
@@ -26,6 +36,27 @@ const hideZone = document.getElementById('hideZone');
 const blindfold = document.getElementById('blindfold');
 
 // ========== COLLISION ==========
+// ========== HIT / DIZZY FX ==========
+function createDizzyStars() {
+  const g = new THREE.Group();
+  const starMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+  for (let i = 0; i < 5; i++) {
+    const s = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.08), starMat);
+    const angle = (i / 5) * Math.PI * 2;
+    s.position.set(Math.cos(angle) * 0.5, 2.3, Math.sin(angle) * 0.5);
+    s.userData.baseAngle = angle;
+    g.add(s);
+  }
+  scene.add(g);
+  return g;
+}
+
+function triggerMissFor(charGroupRef, charRot) {
+  // Push character backward for ~0.3s and set dizzy for ~2s
+  const back = { x: -Math.sin(charRot) * 4, z: -Math.cos(charRot) * 4 };
+  return { hitTimer: 0.5, bounceVel: back, bounceTime: 0.3, dizzyTime: 2.0, dizzyStars: createDizzyStars() };
+}
+
 function resolveCollision(pos, radius) {
   for (let i = 0; i < 4; i++) {
     let hit = null;
@@ -163,10 +194,22 @@ setOnMessage((msg) => {
   }
 
   if (msg.type === 'searchResult') {
+    const fi = msg.furnitureIndex;
+    const h = hideables[fi];
+    const isMe = msg.seekerId === getMyId();
+
+    // Always do hit animation for the seeker (local or remote)
+    if (isMe) {
+      hitTimer = 0.5;
+    } else {
+      const rp = remotePlayers.get(msg.seekerId);
+      if (rp) {
+        if (!remoteFx.has(msg.seekerId)) remoteFx.set(msg.seekerId, {});
+        remoteFx.get(msg.seekerId).hitTimer = 0.5;
+      }
+    }
+
     if (msg.found) {
-      // Show found hider briefly
-      const fi = msg.furnitureIndex;
-      const h = hideables[fi];
       if (h) {
         h.group.traverse((c) => { if (c.isMesh) c.material.emissive?.setHex(0x004400); });
         setTimeout(() => clearHighlight(h), 1500);
@@ -174,12 +217,26 @@ setOnMessage((msg) => {
       const rp = remotePlayers.get(msg.hiderId);
       if (rp) { rp.char.group.visible = true; rp.char.group.position.copy(h.pos); }
     } else {
-      // Miss — flash red
-      const fi = msg.furnitureIndex;
-      const h = hideables[fi];
+      // Miss: flash red, bounce seeker back, make them dizzy
       if (h) {
         h.group.traverse((c) => { if (c.isMesh) c.material.emissive?.setHex(0x440000); });
         setTimeout(() => clearHighlight(h), 1000);
+      }
+      if (isMe) {
+        const fx = triggerMissFor(myChar.group, charRotY);
+        hitTimer = fx.hitTimer;
+        bounceVel = fx.bounceVel;
+        bounceTime = fx.bounceTime;
+        dizzyTime = fx.dizzyTime;
+        if (dizzyStars) scene.remove(dizzyStars);
+        dizzyStars = fx.dizzyStars;
+      } else {
+        const rp = remotePlayers.get(msg.seekerId);
+        if (rp) {
+          const rot = rp.char.group.rotation.y;
+          const fx = triggerMissFor(rp.char.group, rot);
+          remoteFx.set(msg.seekerId, fx);
+        }
       }
     }
   }
@@ -198,6 +255,10 @@ setOnMessage((msg) => {
     phase = 'lobby'; isHiding = false; hiddenIn = null;
     nearestHideable = null;
     shaking.clear();
+    hitTimer = 0; bounceTime = 0; dizzyTime = 0; bounceVel = null;
+    if (dizzyStars) { scene.remove(dizzyStars); dizzyStars = null; }
+    for (const [id, fx] of remoteFx) { if (fx.dizzyStars) scene.remove(fx.dizzyStars); }
+    remoteFx.clear();
     charPos.set(0, 0, 2); charRotY = 0;
     hideZone.classList.remove('visible');
     hideBtn.textContent = 'HIDE';
@@ -260,7 +321,9 @@ function animate() {
 
   // --- MOVEMENT ---
   let isMoving = false;
-  if (canMove && !seekerBlind && !isHiding) {
+  // Dizzy/bouncing seekers can't move
+  const disabled = dizzyTime > 0 || bounceTime > 0;
+  if (canMove && !seekerBlind && !isHiding && !disabled) {
     const input = getInput();
     if (Math.abs(input.x) > .15) charRotY -= input.x * TURN_SPEED * dt;
     if (Math.abs(input.z) > .15) {
@@ -292,6 +355,47 @@ function animate() {
   }
   animateWalk(myChar, dt, isMoving);
 
+  // --- LOCAL SEEKER HIT / BOUNCE / DIZZY ---
+  if (hitTimer > 0) {
+    // Swing right arm forward like a punch
+    const t = 1 - (hitTimer / 0.5);
+    const swing = Math.sin(t * Math.PI) * 1.7;
+    myChar.armR.rotation.x = -swing;
+    myChar.armL.rotation.x = swing * 0.3;
+    hitTimer -= dt;
+    if (hitTimer <= 0) { myChar.armR.rotation.x = 0; myChar.armL.rotation.x = 0; }
+  }
+  if (bounceTime > 0 && bounceVel) {
+    const newPos = charPos.clone();
+    newPos.x += bounceVel.x * dt;
+    newPos.z += bounceVel.z * dt;
+    resolveCollision(newPos, 0.4);
+    charPos.copy(newPos);
+    myChar.group.position.copy(charPos);
+    bounceTime -= dt;
+    if (bounceTime <= 0) { bounceVel = null; }
+  }
+  if (dizzyTime > 0) {
+    dizzyTime -= dt;
+    // Wobble the character
+    myChar.group.rotation.z = Math.sin(clock.elapsedTime * 8) * 0.15;
+    myChar.group.rotation.y = charRotY + Math.sin(clock.elapsedTime * 6) * 0.3;
+    // Animate stars orbiting the head
+    if (dizzyStars) {
+      dizzyStars.position.set(charPos.x, 0, charPos.z);
+      dizzyStars.children.forEach((s) => {
+        const a = s.userData.baseAngle + clock.elapsedTime * 4;
+        s.position.x = Math.cos(a) * 0.5;
+        s.position.z = Math.sin(a) * 0.5;
+      });
+    }
+    if (dizzyTime <= 0) {
+      myChar.group.rotation.z = 0;
+      myChar.group.rotation.y = charRotY;
+      if (dizzyStars) { scene.remove(dizzyStars); dizzyStars = null; }
+    }
+  }
+
   // --- PROXIMITY / ACTION BUTTON ---
   if (!isHiding && canMove && !seekerBlind) {
     const prev = nearestHideable;
@@ -304,9 +408,9 @@ function animate() {
     }
     if (prev && prev !== nearestHideable) clearHighlight(prev);
 
-    // Hiders can hide in BOTH phases, seekers can search in seeking phase
-    const showBtn = (role === 'hider' && nearestHideable) ||
-                    (role === 'seeker' && phase === 'seeking' && nearestHideable);
+    // Hiders can hide in BOTH phases, seekers can search in seeking phase (but not while dizzy)
+    const showBtn = !disabled && ((role === 'hider' && nearestHideable) ||
+                    (role === 'seeker' && phase === 'seeking' && nearestHideable));
     if (nearestHideable && showBtn) {
       nearestHideable.group.traverse((c) => { if (c.isMesh) c.material.emissive?.setHex(0x444400); });
       hideZone.classList.add('visible');
@@ -379,6 +483,42 @@ function animate() {
     rp.char.group.rotation.y += diff * 8 * dt;
     const moving = rp.char.group.position.distanceTo(rp.targetPos) > .05;
     animateWalk(rp.char, dt, moving);
+
+    // Remote seeker hit / dizzy effects
+    const fx = remoteFx.get(id);
+    if (fx) {
+      if (fx.hitTimer > 0) {
+        const tt = 1 - (fx.hitTimer / 0.5);
+        const swing = Math.sin(tt * Math.PI) * 1.7;
+        rp.char.armR.rotation.x = -swing;
+        rp.char.armL.rotation.x = swing * 0.3;
+        fx.hitTimer -= dt;
+      }
+      if (fx.bounceTime > 0 && fx.bounceVel) {
+        rp.char.group.position.x += fx.bounceVel.x * dt;
+        rp.char.group.position.z += fx.bounceVel.z * dt;
+        fx.bounceTime -= dt;
+      }
+      if (fx.dizzyTime > 0) {
+        fx.dizzyTime -= dt;
+        rp.char.group.rotation.z = Math.sin(clock.elapsedTime * 8) * 0.15;
+        if (fx.dizzyStars) {
+          fx.dizzyStars.position.set(rp.char.group.position.x, 0, rp.char.group.position.z);
+          fx.dizzyStars.children.forEach((s) => {
+            const a = s.userData.baseAngle + clock.elapsedTime * 4;
+            s.position.x = Math.cos(a) * 0.5;
+            s.position.z = Math.sin(a) * 0.5;
+          });
+        }
+        if (fx.dizzyTime <= 0) {
+          rp.char.group.rotation.z = 0;
+          if (fx.dizzyStars) scene.remove(fx.dizzyStars);
+          remoteFx.delete(id);
+        }
+      } else if (fx.hitTimer <= 0 && fx.bounceTime <= 0) {
+        remoteFx.delete(id);
+      }
+    }
   }
 
   // --- FIRE + TV ---
