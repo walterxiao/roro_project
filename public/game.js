@@ -200,37 +200,41 @@ addDiningChair(tableX + 2.9, 0, -Math.PI / 2);  // right end
 // ========== FIREPLACE ==========
 const brickMat = mat(0x8B3A2A);
 const darkMat = mat(0x1a1a1a);
+const fpGroup = new THREE.Group();
+fpGroup.position.set(0, 0, -4.7);
 
 // Fireplace back
 const fpBack = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.2, 0.15), brickMat);
-fpBack.position.set(0, 1.1, -4.85);
+fpBack.position.set(0, 1.1, -0.15);
 fpBack.castShadow = true;
-scene.add(fpBack);
+fpGroup.add(fpBack);
 
 // Fireplace opening (dark inside)
 const fpInside = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.2, 0.2), darkMat);
-fpInside.position.set(0, 0.7, -4.75);
-scene.add(fpInside);
+fpInside.position.set(0, 0.7, -0.05);
+fpGroup.add(fpInside);
 
 // Left pillar
 const fpPillarL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.2, 0.3), brickMat);
-fpPillarL.position.set(-1.05, 1.1, -4.7);
+fpPillarL.position.set(-1.05, 1.1, 0);
 fpPillarL.castShadow = true;
-scene.add(fpPillarL);
+fpGroup.add(fpPillarL);
 
 // Right pillar
 const fpPillarR = fpPillarL.clone();
-fpPillarR.position.set(1.05, 1.1, -4.7);
-scene.add(fpPillarR);
+fpPillarR.position.set(1.05, 1.1, 0);
+fpGroup.add(fpPillarR);
 
 // Mantel
 const mantelMat = mat(0x5C3A1E);
 const mantel = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.15, 0.45), mantelMat);
-mantel.position.set(0, 2.25, -4.7);
+mantel.position.set(0, 2.25, 0);
 mantel.castShadow = true;
-scene.add(mantel);
+fpGroup.add(mantel);
 
-// Fire (animated planes)
+scene.add(fpGroup);
+
+// Fire (animated planes) — kept in scene (not group) so they don't shake
 const fireParts = [];
 const fireMat1 = new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.9 });
 const fireMat2 = new THREE.MeshBasicMaterial({ color: 0xff8800, transparent: true, opacity: 0.8 });
@@ -246,30 +250,35 @@ for (let i = 0; i < 6; i++) {
 }
 
 // ========== TV ==========
+const tvGroup = new THREE.Group();
+tvGroup.position.set(4.5, 0, -3.5);
+
 // TV stand
 const tvStandMat = mat(0x2C2C2C);
 const tvStand = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.6, 0.5), tvStandMat);
-tvStand.position.set(4.5, 0.3, -3.5);
+tvStand.position.set(0, 0.3, 0);
 tvStand.castShadow = true;
-scene.add(tvStand);
+tvGroup.add(tvStand);
 
 // TV screen
 const tvScreenMat = mat(0x111111);
 const tvScreen = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.4, 0.08), tvScreenMat);
-tvScreen.position.set(4.5, 1.5, -3.5);
+tvScreen.position.set(0, 1.5, 0);
 tvScreen.castShadow = true;
-scene.add(tvScreen);
+tvGroup.add(tvScreen);
 
 // TV bezel
 const tvBezelMat = mat(0x1a1a1a);
 const tvBezel = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.6, 0.06), tvBezelMat);
-tvBezel.position.set(4.5, 1.5, -3.55);
-scene.add(tvBezel);
+tvBezel.position.set(0, 1.5, -0.05);
+tvGroup.add(tvBezel);
 
 // TV glow
 const tvGlow = new THREE.PointLight(0x4488ff, 0.5, 4);
-tvGlow.position.set(4.5, 1.5, -3.0);
-scene.add(tvGlow);
+tvGlow.position.set(0, 1.5, 0.5);
+tvGroup.add(tvGlow);
+
+scene.add(tvGroup);
 
 // ========== THREE-PERSON SOFA ==========
 const sofaMat = mat(0x3366AA);
@@ -329,6 +338,12 @@ const hideables = [];
 
 // Register sofa
 hideables.push({ group: sofaGroup, pos: sofaGroup.position.clone(), name: 'Sofa' });
+
+// Register TV
+hideables.push({ group: tvGroup, pos: tvGroup.position.clone(), name: 'TV' });
+
+// Register fireplace
+hideables.push({ group: fpGroup, pos: fpGroup.position.clone(), name: 'Fireplace' });
 
 // Register dining chairs
 chairGroups.forEach((grp, i) => {
