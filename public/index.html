@@ -16,6 +16,9 @@
     .role-btn { padding:14px 28px; font-size:16px; font-weight:700; border:2px solid #555; background:#222; color:#fff; border-radius:8px; cursor:pointer; }
     .role-btn.seeker-on { border-color:#f55; background:#411; }
     .role-btn.hider-on { border-color:#4c4; background:#142; }
+    .map-btn { padding:8px 16px; font-size:14px; border:2px solid #555; background:#222; color:#fff; border-radius:6px; cursor:pointer; }
+    .map-btn.active { border-color:#2a7; background:#142; }
+    .map-btn:disabled { opacity:0.5; cursor:default; }
     #players { min-height:40px; text-align:center; color:#aaa; line-height:1.8; font-size:14px; }
     #startBtn { padding:16px 40px; font-size:20px; font-weight:700; border:none; border-radius:12px; background:#2a7; color:#fff; cursor:pointer; }
     #startBtn:disabled { background:#333; color:#666; cursor:default; }
@@ -37,6 +40,12 @@
       Game in progress.<br>Please wait for it to end.
     </div>
     <input type="text" id="nameInput" placeholder="Enter your name" maxlength="16">
+    <div id="mapSelector" style="display:flex; gap:10px; align-items:center;">
+      <span style="color:#aaa; font-size:14px;">Map:</span>
+      <button class="map-btn" id="mapHome" data-map="home">Home</button>
+      <button class="map-btn" id="mapLibrary" data-map="library">Library</button>
+    </div>
+    <div id="mapInfo" style="color:#aaa; font-size:13px;"></div>
     <div id="players"></div>
     <button id="startBtn" disabled>I am ready</button>
     <div id="status"></div>
@@ -76,6 +85,8 @@
 
     let ws, myId = null, myRole = null, gameStarted = false;
     let currentPlayers = [];
+    let currentMap = 'home';
+    let hostId = null;
 
     // Restore name from previous session
     const savedName = sessionStorage.getItem('roroName');
@@ -84,7 +95,7 @@
     function wsSend(msg) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg)); }
 
     // Expose ws + role + players for game modules
-    window.__roro = { getWs: () => ws, getId: () => myId, getRole: () => myRole, getPlayers: () => currentPlayers, send: wsSend };
+    window.__roro = { getWs: () => ws, getId: () => myId, getRole: () => myRole, getPlayers: () => currentPlayers, getMap: () => currentMap, send: wsSend };
     window.__roroBuffer = []; // messages queued while game module loads
 
     function connect() {
@@ -99,10 +110,21 @@
         const msg = JSON.parse(e.data);
         if (msg.type === 'welcome') {
           myId = msg.id;
+          if (msg.map) currentMap = msg.map;
+          if (msg.hostId != null) hostId = msg.hostId;
           updatePlayers(msg.players);
           updateLobbyForPhase(msg.phase);
+          updateMapUI();
         }
-        if (msg.type === 'allPlayers') updatePlayers(msg.players);
+        if (msg.type === 'allPlayers') {
+          if (msg.hostId != null) hostId = msg.hostId;
+          updatePlayers(msg.players);
+          updateMapUI();
+        }
+        if (msg.type === 'mapChanged') {
+          currentMap = msg.map;
+          updateMapUI();
+        }
         if (msg.type === 'wheelSpin') startWheel(msg.players, msg.seekerId, msg.duration);
         if (msg.type === 'phaseChange') {
           if (msg.phase === 'hiding' && !gameStarted) {
@@ -236,6 +258,20 @@
       wsSend({ type: 'setName', name: n });
     });
     startBtn.addEventListener('click', () => wsSend({ type: 'ready' }));
+
+    const mapHomeBtn = document.getElementById('mapHome');
+    const mapLibraryBtn = document.getElementById('mapLibrary');
+    const mapInfo = document.getElementById('mapInfo');
+    function updateMapUI() {
+      mapHomeBtn.classList.toggle('active', currentMap === 'home');
+      mapLibraryBtn.classList.toggle('active', currentMap === 'library');
+      const isHost = hostId === myId;
+      mapHomeBtn.disabled = !isHost;
+      mapLibraryBtn.disabled = !isHost;
+      mapInfo.textContent = isHost ? '(You choose the map)' : 'Host picks the map';
+    }
+    mapHomeBtn.addEventListener('click', () => { if (hostId === myId) wsSend({ type: 'setMap', map: 'home' }); });
+    mapLibraryBtn.addEventListener('click', () => { if (hostId === myId) wsSend({ type: 'setMap', map: 'library' }); });
 
     connect();
   </script>

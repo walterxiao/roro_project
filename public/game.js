@@ -1,8 +1,13 @@
 import { THREE, renderer, scene, camera, fireLight } from './scene.js';
-import { ROOM_W, ROOM_D, ROOM_H, DINING_W, walls, hideables, hideableBounds, colliders, fireParts, tvGlow } from './room.js';
 import { createCharacter, animateWalk } from './character.js';
 import { getInput, getLook, decayLook, consumeDragYaw } from './controls.js';
 import { send, getMyId, getMyRole, setOnMessage, showToast } from './network.js';
+
+// Dynamically load the chosen map
+const mapName = window.__roro?.getMap?.() || 'home';
+const mapFile = mapName === 'library' ? './library.js' : './room.js';
+const mapMod = await import(mapFile);
+const { ROOM_W, ROOM_D, ROOM_H, DINING_W, walls, hideables, hideableBounds, colliders, fireParts, tvGlow, roomAt: mapRoomAt, birdsEyeRoom } = mapMod;
 
 // ========== STATE ==========
 const MOVE_SPEED = 4, TURN_SPEED = 3, HIDE_RANGE = 2.5, CATCH_RANGE = 1.5;
@@ -32,17 +37,7 @@ const hiddenHiderFurniture = new Map(); // playerId -> furnitureIndex
 let lastSeekerRoom = null;
 
 // Room detection based on position
-function roomAt(x, z) {
-  if (z < -5) return 'garage';
-  if (z > 5) {
-    if (x < -6) return 'office';
-    if (x > 6) return 'bedroom';
-    return 'mid-south';
-  }
-  if (x < -6) return 'play';
-  if (x > 6) return 'dining';
-  return 'living';
-}
+const roomAt = mapRoomAt;
 
 // Simple "ugh ugh" sound via Web Audio (no asset needed)
 let audioCtx = null;
@@ -511,34 +506,13 @@ function animate() {
 
   // --- CAMERA ---
   if (isHiding && hiddenIn) {
-    // Pick the room the hideable is in, center the bird's-eye accordingly
-    const p = hiddenIn.pos;
-    let rcx, rcz = 0, rw = ROOM_W, rd = ROOM_D;
-    if (p.z < -5) {
-      // Garage
-      rcx = 12; rcz = -9; rw = 8; rd = 8;
-    } else if (p.z > 5) {
-      // Back row: office / middle-south / bedroom
-      rcz = 10;
-      if (p.x < -ROOM_W / 2) { rcx = -ROOM_W / 2 - 5; rw = 10; }   // office
-      else if (p.x > ROOM_W / 2) { rcx = ROOM_W / 2 + DINING_W / 2; rw = DINING_W; } // bedroom
-      else { rcx = 0; rw = ROOM_W; }                                // middle-south
-    } else if (p.x < -ROOM_W / 2) {
-      // Play room
-      rcx = -ROOM_W / 2 - 5; rw = 10;
-    } else if (p.x > ROOM_W / 2) {
-      // Dining room
-      rcx = ROOM_W / 2 + DINING_W / 2; rw = DINING_W;
-    } else {
-      // Living room
-      rcx = 0; rw = ROOM_W;
-    }
+    const r = birdsEyeRoom(hiddenIn.pos.x, hiddenIn.pos.z);
     const fov = camera.fov / 2 * Math.PI / 180;
-    const nH = (rd / 2) / Math.tan(fov);
-    const nW = (rw / 2) / (Math.tan(fov) * camera.aspect);
+    const nH = (r.d / 2) / Math.tan(fov);
+    const nW = (r.w / 2) / (Math.tan(fov) * camera.aspect);
     const camY = Math.max(nH, nW) + 2;
-    camera.position.lerp(new THREE.Vector3(rcx, camY, rcz), 3 * dt);
-    camera.lookAt(rcx, 0, rcz);
+    camera.position.lerp(new THREE.Vector3(r.cx, camY, r.cz), 3 * dt);
+    camera.lookAt(r.cx, 0, r.cz);
   } else if (!seekerBlind) {
     const cd = 6, ch = 3.5;
     const look = getLook();

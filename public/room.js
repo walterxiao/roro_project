@@ -651,4 +651,39 @@ const colliders = [
   ...chairColliders,
 ];
 
-export { ROOM_W, ROOM_D, ROOM_H, DINING_W, walls, hideables, hideableBounds, colliders, fireParts, tvGlow };
+// Spawn points across rooms (home map)
+const spawnPoints = [
+  { x: -2, z: 3 }, { x: 2, z: -2 },
+  { x: 11, z: 2 }, { x: 13, z: -2 },
+  { x: 12, z: -9 },
+  { x: -11, z: 2 }, { x: -13, z: -2 },
+  { x: -11, z: 10 }, { x: -13, z: 8 },
+  { x: 0, z: 10 },
+  { x: 11, z: 10 }, { x: 13, z: 8 },
+];
+
+function roomAt(x, z) {
+  if (z < -5) return 'garage';
+  if (z > 5) {
+    if (x < -6) return 'office';
+    if (x > 6) return 'bedroom';
+    return 'mid-south';
+  }
+  if (x < -6) return 'play';
+  if (x > 6) return 'dining';
+  return 'living';
+}
+
+function birdsEyeRoom(x, z) {
+  if (z < -5) return { cx: 12, cz: -9, w: 8, d: 8 };
+  if (z > 5) {
+    if (x < -6) return { cx: -11, cz: 10, w: 10, d: ROOM_D };
+    if (x > 6) return { cx: 11, cz: 10, w: DINING_W, d: ROOM_D };
+    return { cx: 0, cz: 10, w: ROOM_W, d: ROOM_D };
+  }
+  if (x < -6) return { cx: -11, cz: 0, w: 10, d: ROOM_D };
+  if (x > 6) return { cx: 11, cz: 0, w: DINING_W, d: ROOM_D };
+  return { cx: 0, cz: 0, w: ROOM_W, d: ROOM_D };
+}
+
+export { ROOM_W, ROOM_D, ROOM_H, DINING_W, walls, hideables, hideableBounds, colliders, fireParts, tvGlow, spawnPoints, roomAt, birdsEyeRoom };

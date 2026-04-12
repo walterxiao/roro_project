@@ -18,24 +18,34 @@ const players = new Map();
 let phase = 'lobby';
 let seekerChances = 3;
 let hideCountdown = 0;
-// Random spawn points across all rooms (for hiders)
-const SPAWN_POINTS = [
-  { x: -2, z: 3 },     // living room
-  { x: 2, z: -2 },     // living room
-  { x: 11, z: 2 },     // dining room
-  { x: 13, z: -2 },    // dining room
-  { x: 12, z: -9 },    // garage
-  { x: -11, z: 2 },    // play room
-  { x: -13, z: -2 },   // play room
-  { x: -11, z: 10 },   // office
-  { x: -13, z: 8 },    // office
-  { x: 0, z: 10 },     // middle-south
-  { x: 11, z: 10 },    // bedroom
-  { x: 13, z: 8 },     // bedroom
-];
+let selectedMap = 'home';
+
+function getHostId() {
+  const ids = [...players.keys()];
+  return ids.length ? Math.min(...ids) : null;
+}
+
+// Random spawn points per map (for hiders)
+const SPAWNS_BY_MAP = {
+  home: [
+    { x: -2, z: 3 }, { x: 2, z: -2 },
+    { x: 11, z: 2 }, { x: 13, z: -2 },
+    { x: 12, z: -9 },
+    { x: -11, z: 2 }, { x: -13, z: -2 },
+    { x: -11, z: 10 }, { x: -13, z: 8 },
+    { x: 0, z: 10 },
+    { x: 11, z: 10 }, { x: 13, z: 8 },
+  ],
+  library: [
+    { x: -10, z: -9 }, { x: 4, z: -9 }, { x: -6, z: -3 }, { x: 1, z: -3 },
+    { x: -6, z: 1 }, { x: 1, z: 1 }, { x: -6, z: 5 }, { x: 1, z: 5 },
+    { x: 10, z: -9 }, { x: 10, z: 5 }, { x: -10, z: 5 }, { x: 10, z: 0 },
+  ],
+};
 
 function randomSpawn() {
-  return SPAWN_POINTS[Math.floor(Math.random() * SPAWN_POINTS.length)];
+  const list = SPAWNS_BY_MAP[selectedMap] || SPAWNS_BY_MAP.home;
+  return list[Math.floor(Math.random() * list.length)];
 }
 
 let hideTimer = null;
@@ -61,7 +71,7 @@ function pub(p) {
 function allPub() { return [...players.values()].map(pub); }
 
 function broadcastPlayers() {
-  broadcast({ type: 'allPlayers', players: allPub() });
+  broadcast({ type: 'allPlayers', players: allPub(), hostId: getHostId() });
 }
 
 function endGame(winner, reason) {
@@ -212,7 +222,7 @@ wss.on('connection', (ws) => {
     isHiding: false, hiddenFurniture: -1, isFound: false, ready: false, ws
   };
   players.set(id, player);
-  send(ws, { type: 'welcome', id, players: allPub(), phase, seekerChances, hideCountdown });
+  send(ws, { type: 'welcome', id, players: allPub(), phase, seekerChances, hideCountdown, map: selectedMap, hostId: getHostId() });
   broadcastPlayers();
 
   ws.on('message', (raw) => {
@@ -231,6 +241,15 @@ wss.on('connection', (ws) => {
         player.role = 'hider';
       }
       broadcast({ type: 'allPlayers', players: allPub() });
+    }
+    if (msg.type === 'setMap' && phase === 'lobby' && id === getHostId()) {
+      if (msg.map === 'home' || msg.map === 'library') {
+        selectedMap = msg.map;
+        // Reset all ready states when map changes
+        for (const p of players.values()) p.ready = false;
+        broadcast({ type: 'mapChanged', map: selectedMap });
+        broadcastPlayers();
+      }
     }
     if (msg.type === 'ready' && phase === 'lobby') {
       player.ready = !player.ready;
