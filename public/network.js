@@ -71,4 +71,10 @@ window.__roroOnMsg = (msg) => {
 export { send, showToast };
 export function getMyId() { return roro.getId(); }
 export function getMyRole() { return roro.getRole(); }
-export function setOnMessage(fn) { gameHandler = fn; }
+export function setOnMessage(fn) {
+  gameHandler = fn;
+  // Replay buffered messages through both our HUD handler and the game handler
+  const buffered = window.__roroBuffer || [];
+  window.__roroBuffer = [];
+  for (const msg of buffered) window.__roroOnMsg(msg);
+}

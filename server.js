@@ -45,10 +45,10 @@ function endGame(winner, reason) {
   if (shakeTimer) { clearInterval(shakeTimer); shakeTimer = null; }
   if (seekTimer) { clearInterval(seekTimer); seekTimer = null; }
   broadcast({ type: 'gameOver', winner, reason });
-  // Auto-reset to lobby after 6 seconds so winner screen is visible
+  // Auto-reset to lobby after 3 seconds
   setTimeout(() => {
     if (phase === 'gameover') resetGame();
-  }, 6000);
+  }, 3000);
 }
 
 function checkGameOver() {

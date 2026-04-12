@@ -81,6 +81,7 @@
 
     // Expose ws + role + players for game modules
     window.__roro = { getWs: () => ws, getId: () => myId, getRole: () => myRole, getPlayers: () => currentPlayers, send: wsSend };
+    window.__roroBuffer = []; // messages queued while game module loads
 
     function connect() {
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -115,8 +116,9 @@
           window.location.reload();
           return;
         }
-        // Forward to game module if loaded
+        // Forward to game module (or buffer if not loaded yet)
         if (window.__roroOnMsg) window.__roroOnMsg(msg);
+        else window.__roroBuffer.push(msg);
       };
       ws.onerror = () => { statusDiv.textContent = 'Connection error...'; };
       ws.onclose = () => { statusDiv.textContent = 'Reconnecting...'; setTimeout(connect, 2000); };
