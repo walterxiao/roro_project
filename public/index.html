@@ -3,31 +3,47 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>RoRo Project</title>
+  <title>RoRo Hide &amp; Seek</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <canvas id="gameCanvas"></canvas>
 
-  <!-- HUD -->
-  <div id="hud">
-    <div id="joystickZone">
-      <div id="joystickBase">
-        <div id="joystickKnob"></div>
-      </div>
+  <!-- LOBBY -->
+  <div id="lobby">
+    <h1>RoRo Hide &amp; Seek</h1>
+    <input type="text" id="nameInput" placeholder="Your name" maxlength="16">
+    <div id="roleRow">
+      <button id="btnSeeker" class="roleBtn">Seeker</button>
+      <button id="btnHider" class="roleBtn">Hider</button>
     </div>
-    <div id="hideZone">
-      <button id="hideBtn">HIDE</button>
+    <div id="playerList"></div>
+    <button id="btnStart" disabled>Start Game</button>
+  </div>
+
+  <!-- GAME HUD -->
+  <div id="hud" class="hidden">
+    <div id="statusBar"><span id="phaseText"></span><span id="chancesText"></span></div>
+    <div id="joystickZone">
+      <div id="joystickBase"><div id="joystickKnob"></div></div>
+    </div>
+    <div id="hideZone"><button id="hideBtn">HIDE</button></div>
+    <div id="blindfold" class="hidden">
+      <div id="blindfoldInner">Hiders are hiding...<br><span id="bfTimer"></span></div>
     </div>
   </div>
 
+  <!-- GAME OVER -->
+  <div id="gameOverScreen" class="hidden">
+    <h1 id="winnerText"></h1>
+    <button id="btnAgain">Play Again</button>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="hidden"></div>
+
   <script type="importmap">
-  {
-    "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
-    }
-  }
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
   </script>
   <script type="module" src="/game.js"></script>
 </body>

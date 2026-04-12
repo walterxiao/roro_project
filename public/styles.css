@@ -1,92 +1,42 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { width:100%; height:100%; overflow:hidden; background:#000; touch-action:none; -webkit-user-select:none; user-select:none; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; }
+.hidden { display:none !important; }
+#gameCanvas { display:block; width:100%; height:100%; }
 
-html, body {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: #000;
-  touch-action: none;
-  -webkit-user-select: none;
-  user-select: none;
-}
+/* LOBBY */
+#lobby { position:fixed; inset:0; background:rgba(0,0,0,.85); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; z-index:100; }
+#lobby h1 { font-size:26px; }
+#nameInput { padding:10px 16px; font-size:16px; border-radius:8px; border:none; width:200px; text-align:center; }
+#roleRow { display:flex; gap:12px; }
+.roleBtn { padding:12px 24px; font-size:16px; font-weight:700; border:2px solid #555; background:#222; color:#fff; border-radius:8px; cursor:pointer; }
+.roleBtn.active-seeker { border-color:#f44; background:#511; }
+.roleBtn.active-hider { border-color:#4a4; background:#153; }
+#playerList { min-height:40px; font-size:13px; color:#aaa; text-align:center; line-height:1.6; }
+#btnStart { padding:14px 36px; font-size:18px; font-weight:700; border:none; border-radius:10px; background:#2a7; color:#fff; cursor:pointer; }
+#btnStart:disabled { background:#444; color:#777; cursor:default; }
 
-#gameCanvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
+/* HUD */
+#hud { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:10; }
+#statusBar { position:absolute; top:12px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.6); color:#fff; padding:8px 20px; border-radius:20px; font-size:14px; font-weight:600; display:flex; gap:16px; white-space:nowrap; }
+#joystickZone { position:absolute; bottom:20px; left:20px; width:150px; height:150px; pointer-events:auto; }
+#joystickBase { width:130px; height:130px; border-radius:50%; background:rgba(255,255,255,.15); border:3px solid rgba(255,255,255,.3); position:relative; display:flex; align-items:center; justify-content:center; }
+#joystickKnob { width:50px; height:50px; border-radius:50%; background:rgba(255,255,255,.5); position:absolute; transition:none; }
+#hideZone { position:absolute; bottom:30px; right:30px; pointer-events:auto; display:none; }
+#hideZone.visible { display:block; }
+#hideBtn { width:100px; height:100px; border-radius:50%; border:3px solid rgba(255,200,50,.6); background:rgba(255,200,50,.25); color:#fff; font-size:15px; font-weight:700; letter-spacing:1px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+#hideBtn:active { background:rgba(255,200,50,.5); }
+#hideBtn.search-mode { border-color:rgba(255,80,80,.7); background:rgba(255,80,80,.25); }
+#hideBtn.search-mode:active { background:rgba(255,80,80,.5); }
 
-/* ---- HUD overlay ---- */
-#hud {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  pointer-events: none;
-  z-index: 10;
-}
+/* Blindfold */
+#blindfold { position:absolute; inset:0; background:rgba(0,0,0,.95); display:flex; align-items:center; justify-content:center; pointer-events:auto; }
+#blindfoldInner { color:#fff; font-size:24px; text-align:center; line-height:1.6; }
+#bfTimer { font-size:48px; font-weight:700; }
 
-/* Joystick – lower-left */
-#joystickZone {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  width: 150px;
-  height: 150px;
-  pointer-events: auto;
-}
+/* Game over */
+#gameOverScreen { position:fixed; inset:0; background:rgba(0,0,0,.8); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; z-index:200; }
+#gameOverScreen h1 { font-size:30px; }
+#btnAgain { padding:14px 36px; font-size:18px; font-weight:700; border:none; border-radius:10px; background:#2a7; color:#fff; cursor:pointer; }
 
-#joystickBase {
-  width: 130px;
-  height: 130px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-#joystickKnob {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.5);
-  position: absolute;
-  transition: none;
-}
-
-/* Hide button – lower-right, hidden by default */
-#hideZone {
-  position: absolute;
-  bottom: 30px;
-  right: 30px;
-  pointer-events: auto;
-  display: none;
-}
-
-#hideZone.visible {
-  display: block;
-}
-
-#hideBtn {
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  border: 3px solid rgba(255, 200, 50, 0.6);
-  background: rgba(255, 200, 50, 0.25);
-  color: #fff;
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-#hideBtn:active {
-  background: rgba(255, 200, 50, 0.5);
-}
+/* Toast */
+#toast { position:fixed; top:55px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.8); color:#ff0; padding:10px 24px; border-radius:10px; font-size:16px; font-weight:600; z-index:300; pointer-events:none; }
