@@ -72,6 +72,10 @@
 
     let ws, myId = null, myRole = null, gameStarted = false;
 
+    // Restore name from previous session
+    const savedName = sessionStorage.getItem('roroName');
+    if (savedName) nameInput.value = savedName;
+
     function wsSend(msg) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg)); }
 
     // Expose ws + role for game modules
@@ -106,15 +110,9 @@
           updateLobbyForPhase('gameover');
         }
         if (msg.type === 'reset') {
-          gameStarted = false;
-          gameWrap.classList.remove('active');
-          lobby.style.display = 'flex';
-          document.body.style.background = '#1a1a2e';
-          // Clear local role + button states (keep name)
-          myRole = null;
-          seekerBtn.classList.remove('seeker-on');
-          hiderBtn.classList.remove('hider-on');
-          updateLobbyForPhase('lobby');
+          // Fully reload to guarantee clean state — name is restored from sessionStorage
+          window.location.reload();
+          return;
         }
         // Forward to game module if loaded
         if (window.__roroOnMsg) window.__roroOnMsg(msg);
@@ -164,7 +162,11 @@
       }
     }
 
-    nameInput.addEventListener('input', () => wsSend({ type: 'setName', name: nameInput.value.trim() }));
+    nameInput.addEventListener('input', () => {
+      const n = nameInput.value.trim();
+      sessionStorage.setItem('roroName', n);
+      wsSend({ type: 'setName', name: n });
+    });
     seekerBtn.addEventListener('click', () => { wsSend({ type: 'setRole', role: 'seeker' }); myRole = 'seeker'; seekerBtn.classList.add('seeker-on'); hiderBtn.classList.remove('hider-on'); });
     hiderBtn.addEventListener('click', () => { wsSend({ type: 'setRole', role: 'hider' }); myRole = 'hider'; hiderBtn.classList.add('hider-on'); seekerBtn.classList.remove('seeker-on'); });
     startBtn.addEventListener('click', () => wsSend({ type: 'startGame' }));
