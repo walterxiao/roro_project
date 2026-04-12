@@ -18,6 +18,7 @@ const players = new Map();
 let phase = 'lobby';
 let seekerChances = 3;
 let hideCountdown = 0;
+let seekerRotation = 0; // increments each game
 let hideTimer = null;
 let shakeTimer = null;
 let seekTimer = null;
@@ -38,6 +39,16 @@ function pub(p) {
   return { id: p.id, name: p.name, role: p.role, pos: p.pos, rot: p.rot, isHiding: p.isHiding, isFound: p.isFound };
 }
 function allPub() { return [...players.values()].map(pub); }
+
+function getNextSeekerId() {
+  const ids = [...players.keys()].sort((a, b) => a - b);
+  if (ids.length === 0) return null;
+  return ids[seekerRotation % ids.length];
+}
+
+function broadcastPlayers() {
+  broadcast({ type: 'allPlayers', players: allPub(), nextSeekerId: getNextSeekerId() });
+}
 
 function endGame(winner, reason) {
   phase = 'gameover';
@@ -93,17 +104,18 @@ wss.on('connection', (ws) => {
     isHiding: false, hiddenFurniture: -1, isFound: false, ws
   };
   players.set(id, player);
-  send(ws, { type: 'welcome', id, players: allPub(), phase, seekerChances, hideCountdown });
-  broadcast({ type: 'playerJoined', player: pub(player) }, id);
+  send(ws, { type: 'welcome', id, players: allPub(), phase, seekerChances, hideCountdown, nextSeekerId: getNextSeekerId() });
+  broadcastPlayers();
 
   ws.on('message', (raw) => {
     let msg; try { msg = JSON.parse(raw); } catch { return; }
 
     if (msg.type === 'setName') {
       player.name = (msg.name || '').slice(0, 16) || player.name;
-      broadcast({ type: 'allPlayers', players: allPub() });
+      broadcastPlayers();
     }
-    if (msg.type === 'setRole' && phase === 'lobby') {
+    // setRole is no longer used — roles are auto-assigned at game start (kept for safety)
+    if (false && msg.type === 'setRole' && phase === 'lobby') {
       if (msg.role === 'seeker') {
         for (const p of players.values()) if (p.role === 'seeker') p.role = null;
         player.role = 'seeker';
@@ -113,11 +125,17 @@ wss.on('connection', (ws) => {
       broadcast({ type: 'allPlayers', players: allPub() });
     }
     if (msg.type === 'startGame' && phase === 'lobby') {
-      if (![...players.values()].some(p => p.role === 'seeker')) return;
-      if (![...players.values()].some(p => p.role === 'hider')) return;
+      if (players.size < 2) return;
+      // Round-robin: assign seeker based on rotation
+      const seekerId = getNextSeekerId();
+      seekerRotation++;
+      for (const p of players.values()) {
+        p.role = (p.id === seekerId) ? 'seeker' : 'hider';
+        p.isHiding = false; p.hiddenFurniture = -1; p.isFound = false;
+      }
       phase = 'hiding'; seekerChances = 3; hideCountdown = HIDE_TIME;
-      for (const p of players.values()) { p.isHiding = false; p.hiddenFurniture = -1; p.isFound = false; }
       broadcast({ type: 'phaseChange', phase: 'hiding', hideCountdown, seekerChances });
+      broadcastPlayers();
       startShakeTimer();
       hideTimer = setInterval(() => {
         hideCountdown--;
@@ -185,6 +203,7 @@ wss.on('connection', (ws) => {
     const wasSeeker = player.role === 'seeker';
     players.delete(id);
     broadcast({ type: 'playerLeft', id });
+    broadcastPlayers();
     if (players.size === 0) { resetGame(); return; }
     if ((phase === 'hiding' || phase === 'seeking') && wasSeeker) {
       endGame('hiders', 'seeker-left');
