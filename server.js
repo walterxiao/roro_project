@@ -18,6 +18,26 @@ const players = new Map();
 let phase = 'lobby';
 let seekerChances = 3;
 let hideCountdown = 0;
+// Random spawn points across all rooms (for hiders)
+const SPAWN_POINTS = [
+  { x: -2, z: 3 },     // living room
+  { x: 2, z: -2 },     // living room
+  { x: 11, z: 2 },     // dining room
+  { x: 13, z: -2 },    // dining room
+  { x: 12, z: -9 },    // garage
+  { x: -11, z: 2 },    // play room
+  { x: -13, z: -2 },   // play room
+  { x: -11, z: 10 },   // office
+  { x: -13, z: 8 },    // office
+  { x: 0, z: 10 },     // middle-south
+  { x: 11, z: 10 },    // bedroom
+  { x: 13, z: 8 },     // bedroom
+];
+
+function randomSpawn() {
+  return SPAWN_POINTS[Math.floor(Math.random() * SPAWN_POINTS.length)];
+}
+
 let hideTimer = null;
 let shakeTimer = null;
 let proxShakeTimer = null;
@@ -152,6 +172,15 @@ wss.on('connection', (ws) => {
       for (const p of players.values()) {
         p.role = (p.id === seekerId) ? 'seeker' : 'hider';
         p.isHiding = false; p.hiddenFurniture = -1; p.isFound = false;
+        if (p.role === 'hider') {
+          const s = randomSpawn();
+          p.pos = { x: s.x, z: s.z };
+          p.rot = Math.random() * Math.PI * 2;
+        } else {
+          // Seeker spawns in the living room center
+          p.pos = { x: 0, z: 0 };
+          p.rot = 0;
+        }
       }
       phase = 'spinning';
       // Tell everyone to show the wheel animation first

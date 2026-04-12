@@ -122,11 +122,18 @@ function clearHighlight(h) {
 const myId = getMyId();
 const colorIdx = myId ? myId % 6 : 0;
 myChar = createCharacter(colorIdx);
-myChar.group.position.copy(charPos);
-phase = 'hiding'; // We only get here after phaseChange to hiding
 
-// Create characters for all other players already in the lobby
+// Use server-assigned spawn position from the lobby's player list
 const existingPlayers = window.__roro?.getPlayers?.() || [];
+const me = existingPlayers.find(p => p.id === myId);
+if (me && me.pos) {
+  charPos.set(me.pos.x, 0, me.pos.z);
+  charRotY = me.rot || 0;
+}
+myChar.group.position.copy(charPos);
+myChar.group.rotation.y = charRotY;
+phase = 'hiding';
+
 for (const p of existingPlayers) {
   if (p.id !== myId) addRemotePlayer(p);
 }
@@ -186,8 +193,11 @@ setOnMessage((msg) => {
     phase = msg.phase;
     if (phase === 'hiding') {
       isHiding = false; hiddenIn = null;
-      charPos.set(0, 0, 2); charRotY = 0;
-      if (myChar) { myChar.group.visible = true; myChar.group.position.copy(charPos); }
+      // Server assigns each player a random spawn — read it from current player list
+      const players = window.__roro?.getPlayers?.() || [];
+      const me = players.find(p => p.id === myId);
+      if (me && me.pos) { charPos.set(me.pos.x, 0, me.pos.z); charRotY = me.rot || 0; }
+      if (myChar) { myChar.group.visible = true; myChar.group.position.copy(charPos); myChar.group.rotation.y = charRotY; }
     }
     // If hider is hiding when phase changes, keep UNHIDE button visible
     if (phase === 'seeking' && getMyRole() === 'hider' && isHiding) {
