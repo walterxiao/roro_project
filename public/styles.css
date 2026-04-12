@@ -4,20 +4,84 @@
   box-sizing: border-box;
 }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  min-height: 100vh;
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#gameCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---- HUD overlay ---- */
+#hud {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Joystick – lower-left */
+#joystickZone {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  width: 150px;
+  height: 150px;
+  pointer-events: auto;
+}
+
+#joystickBase {
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f5f5f5;
 }
 
-.container {
-  text-align: center;
+#joystickKnob {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  position: absolute;
+  transition: none;
 }
 
-h1 {
-  font-size: 3rem;
-  color: #333;
+/* Jump button – lower-right */
+#jumpZone {
+  position: absolute;
+  bottom: 30px;
+  right: 30px;
+  pointer-events: auto;
+}
+
+#jumpBtn {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#jumpBtn:active {
+  background: rgba(255, 255, 255, 0.35);
 }
