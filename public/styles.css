@@ -85,3 +85,35 @@ html, body {
 #jumpBtn:active {
   background: rgba(255, 255, 255, 0.35);
 }
+
+/* Hide button – bottom center, hidden by default */
+#hideZone {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  display: none;
+}
+
+#hideZone.visible {
+  display: block;
+}
+
+#hideBtn {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 200, 50, 0.6);
+  background: rgba(255, 200, 50, 0.25);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#hideBtn:active {
+  background: rgba(255, 200, 50, 0.5);
+}

@@ -150,6 +150,7 @@ const tLegMat = mat(0x5C3020);
 const dChairMat = mat(0x8B5E3C);
 const dChairLegMat = mat(0x555555);
 const chairColliders = [];
+const chairGroups = [];
 
 function addDiningChair(cx, cz, facingAngle) {
   const chairGrp = new THREE.Group();
@@ -184,6 +185,8 @@ function addDiningChair(cx, cz, facingAngle) {
     min: new THREE.Vector3(cx - 0.5, 0, cz - 0.5),
     max: new THREE.Vector3(cx + 0.5, 1.4, cz + 0.5),
   });
+
+  chairGroups.push(chairGrp);
 }
 
 // 2 chairs on each long side, 1 at each short end
@@ -319,6 +322,18 @@ const sofaLegGeo = new THREE.BoxGeometry(0.1, 0.35, 0.1);
 sofaGroup.position.set(1, 0, 1);
 sofaGroup.rotation.y = Math.PI - 0.4; // backrest faces room entrance, seats face fireplace + TV
 scene.add(sofaGroup);
+
+// ========== HIDEABLE FURNITURE ==========
+// Each entry: { group, pos (world center), name }
+const hideables = [];
+
+// Register sofa
+hideables.push({ group: sofaGroup, pos: sofaGroup.position.clone(), name: 'Sofa' });
+
+// Register dining chairs
+chairGroups.forEach((grp, i) => {
+  hideables.push({ group: grp, pos: grp.position.clone(), name: `Chair ${i + 1}` });
+});
 
 // ========== RUG ==========
 const rugMat = mat(0xCC4444);
@@ -525,6 +540,46 @@ const keys = {};
 window.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; });
 window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
+// ========== HIDE & SEEK ==========
+const hideBtn = document.getElementById('hideBtn');
+const hideZone = document.getElementById('hideZone');
+const HIDE_RANGE = 2.5;
+
+let isHiding = false;
+let hiddenIn = null;        // the hideable object we're hiding in
+let hideTimer = 0;          // time since last shake
+const SHAKE_INTERVAL = 10;  // seconds between shakes
+const SHAKE_DURATION = 1;   // seconds of shaking
+let nearestHideable = null;
+
+hideBtn.addEventListener('touchstart', (e) => { e.preventDefault(); toggleHide(); }, { passive: false });
+hideBtn.addEventListener('mousedown', (e) => { e.preventDefault(); toggleHide(); });
+
+function toggleHide() {
+  if (isHiding) {
+    // Unhide
+    isHiding = false;
+    charGroup.visible = true;
+    hiddenIn.group.position.copy(hiddenIn.pos); // reset position
+    hiddenIn.group.rotation.x = 0;
+    hiddenIn.group.rotation.z = 0;
+    // Move character slightly away from the furniture
+    charPos.copy(hiddenIn.pos);
+    charPos.y = 0;
+    hiddenIn = null;
+    hideBtn.textContent = 'HIDE';
+    hideZone.classList.remove('visible');
+  } else if (nearestHideable) {
+    // Hide
+    isHiding = true;
+    hiddenIn = nearestHideable;
+    hideTimer = 0;
+    charGroup.visible = false;
+    hideBtn.textContent = 'UNHIDE';
+    hideZone.classList.add('visible');
+  }
+}
+
 // ========== COLLISION ==========
 function checkCollision(pos, radius) {
   for (const box of colliders) {
@@ -559,82 +614,131 @@ function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
 
-  // --- Input ---
-  let inputX = joyX;
-  let inputZ = joyY;
+  // --- HIDING STATE ---
+  if (isHiding) {
+    // Shake the furniture 1 second every 10 seconds
+    hideTimer += dt;
+    const cycleTime = hideTimer % SHAKE_INTERVAL;
+    if (cycleTime < SHAKE_DURATION) {
+      const shakeIntensity = 0.04;
+      const shakeSpeed = 30;
+      hiddenIn.group.position.x = hiddenIn.pos.x + Math.sin(hideTimer * shakeSpeed) * shakeIntensity;
+      hiddenIn.group.position.z = hiddenIn.pos.z + Math.cos(hideTimer * shakeSpeed * 1.3) * shakeIntensity;
+      hiddenIn.group.rotation.z = Math.sin(hideTimer * shakeSpeed * 0.7) * 0.02;
+    } else {
+      // Reset to rest position
+      hiddenIn.group.position.x = hiddenIn.pos.x;
+      hiddenIn.group.position.z = hiddenIn.pos.z;
+      hiddenIn.group.rotation.z = 0;
+    }
 
-  // Keyboard WASD / arrows
-  if (keys['w'] || keys['arrowup']) inputZ = -1;
-  if (keys['s'] || keys['arrowdown']) inputZ = 1;
-  if (keys['a'] || keys['arrowleft']) inputX = -1;
-  if (keys['d'] || keys['arrowright']) inputX = 1;
-  if (keys[' ']) jumpPressed = true;
-
-  // --- Jump ---
-  if (jumpPressed && isGrounded) {
-    velY = JUMP_VEL;
-    isGrounded = false;
-  }
-  if (!keys[' ']) jumpPressed = false;
-
-  // --- Gravity ---
-  velY += GRAVITY * dt;
-  charPos.y += velY * dt;
-  if (charPos.y <= 0) {
-    charPos.y = 0;
-    velY = 0;
-    isGrounded = true;
-  }
-
-  // --- Movement (tank-style: left/right turns, up/down moves forward/back) ---
-  // Turn
-  if (Math.abs(inputX) > 0.15) {
-    charRotY -= inputX * TURN_SPEED * dt;
+    // Camera stays fixed on the furniture while hiding
+    const furnitureCenter = new THREE.Vector3(hiddenIn.pos.x, 1.5, hiddenIn.pos.z);
+    const targetCamPos = new THREE.Vector3(
+      hiddenIn.pos.x + 4,
+      3.5,
+      hiddenIn.pos.z + 4
+    );
+    camera.position.lerp(targetCamPos, 3 * dt);
+    camera.lookAt(furnitureCenter);
   }
 
-  // Move forward/backward relative to facing direction
-  if (Math.abs(inputZ) > 0.15) {
-    const forward = -inputZ; // joystick up (negative Y) = forward
-    charPos.x += Math.sin(charRotY) * forward * MOVE_SPEED * dt;
-    charPos.z += Math.cos(charRotY) * forward * MOVE_SPEED * dt;
+  // --- NORMAL MOVEMENT (only when not hiding) ---
+  let isMoving = false;
+  if (!isHiding) {
+    let inputX = joyX;
+    let inputZ = joyY;
+
+    // Keyboard WASD / arrows
+    if (keys['w'] || keys['arrowup']) inputZ = -1;
+    if (keys['s'] || keys['arrowdown']) inputZ = 1;
+    if (keys['a'] || keys['arrowleft']) inputX = -1;
+    if (keys['d'] || keys['arrowright']) inputX = 1;
+    if (keys[' ']) jumpPressed = true;
+
+    // --- Jump ---
+    if (jumpPressed && isGrounded) {
+      velY = JUMP_VEL;
+      isGrounded = false;
+    }
+    if (!keys[' ']) jumpPressed = false;
+
+    // --- Gravity ---
+    velY += GRAVITY * dt;
+    charPos.y += velY * dt;
+    if (charPos.y <= 0) {
+      charPos.y = 0;
+      velY = 0;
+      isGrounded = true;
+    }
+
+    // --- Movement (tank-style: left/right turns, up/down moves forward/back) ---
+    if (Math.abs(inputX) > 0.15) {
+      charRotY -= inputX * TURN_SPEED * dt;
+    }
+    if (Math.abs(inputZ) > 0.15) {
+      const forward = -inputZ;
+      charPos.x += Math.sin(charRotY) * forward * MOVE_SPEED * dt;
+      charPos.z += Math.cos(charRotY) * forward * MOVE_SPEED * dt;
+    }
+
+    isMoving = Math.abs(inputX) > 0.15 || Math.abs(inputZ) > 0.15;
+
+    // Collision
+    resolveCollision(charPos, 0.4);
+
+    // --- Update character ---
+    charGroup.position.copy(charPos);
+    charGroup.rotation.y = charRotY;
+
+    // Walk animation
+    if (isMoving && isGrounded) {
+      walkTime += dt * 8;
+      const swing = Math.sin(walkTime) * 0.4;
+      armMeshL.rotation.x = swing;
+      armMeshR.rotation.x = -swing;
+      legMeshL.rotation.x = -swing;
+      legMeshR.rotation.x = swing;
+    } else {
+      walkTime = 0;
+      armMeshL.rotation.x = 0;
+      armMeshR.rotation.x = 0;
+      legMeshL.rotation.x = 0;
+      legMeshR.rotation.x = 0;
+    }
+
+    // --- Proximity to hideable furniture ---
+    nearestHideable = null;
+    let nearestDist = HIDE_RANGE;
+    for (const h of hideables) {
+      const dx = charPos.x - h.pos.x;
+      const dz = charPos.z - h.pos.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearestHideable = h;
+      }
+    }
+
+    if (nearestHideable) {
+      hideZone.classList.add('visible');
+      hideBtn.textContent = 'HIDE';
+    } else {
+      hideZone.classList.remove('visible');
+    }
+
+    // --- Camera follow (behind character) ---
+    const camDist = 6;
+    const camHeight = 3.5;
+    const targetCamPos = new THREE.Vector3(
+      charPos.x + Math.sin(charRotY) * -camDist,
+      charPos.y + camHeight,
+      charPos.z + Math.cos(charRotY) * -camDist
+    );
+    camera.position.lerp(targetCamPos, 4 * dt);
+    const lookTarget = new THREE.Vector3(charPos.x, charPos.y + 1.5, charPos.z);
+    camera.lookAt(lookTarget);
   }
-
-  const isMoving = Math.abs(inputX) > 0.15 || Math.abs(inputZ) > 0.15;
-
-  // Collision
-  resolveCollision(charPos, 0.4);
-
-  // --- Update character ---
-  charGroup.position.copy(charPos);
-  charGroup.rotation.y = charRotY;
-
-  // Walk animation
-  if (isMoving && isGrounded) {
-    walkTime += dt * 8;
-    const swing = Math.sin(walkTime) * 0.4;
-    armMeshL.rotation.x = swing;
-    armMeshR.rotation.x = -swing;
-    legMeshL.rotation.x = -swing;
-    legMeshR.rotation.x = swing;
-  } else {
-    walkTime = 0;
-    armMeshL.rotation.x = 0;
-    armMeshR.rotation.x = 0;
-    legMeshL.rotation.x = 0;
-    legMeshR.rotation.x = 0;
-  }
-
-  // --- Camera follow (behind character) ---
-  const camDist = 6;
-  const camHeight = 3.5;
-  const targetCamPos = new THREE.Vector3(
-    charPos.x + Math.sin(charRotY) * -camDist,
-    charPos.y + camHeight,
-    charPos.z + Math.cos(charRotY) * -camDist
-  );
-  camera.position.lerp(targetCamPos, 4 * dt);
-  const lookTarget = new THREE.Vector3(charPos.x, charPos.y + 1.5, charPos.z);
-  camera.lookAt(lookTarget);
 
   // --- Hide walls blocking the view ---
   const charCenter = new THREE.Vector3(charPos.x, charPos.y + 1.0, charPos.z);
