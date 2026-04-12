@@ -585,7 +585,10 @@ function toggleHide() {
     hideBtn.textContent = 'HIDE';
     hideZone.classList.remove('visible');
   } else if (nearestHideable) {
-    // Hide
+    // Hide — clear highlight
+    nearestHideable.group.traverse((child) => {
+      if (child.isMesh) child.material.emissive?.setHex(0x000000);
+    });
     isHiding = true;
     hiddenIn = nearestHideable;
     hideTimer = 0;
@@ -727,6 +730,7 @@ function animate() {
     }
 
     // --- Proximity to hideable furniture ---
+    let prevNearest = nearestHideable;
     nearestHideable = null;
     let nearestDist = HIDE_RANGE;
     for (const h of hideables) {
@@ -739,7 +743,22 @@ function animate() {
       }
     }
 
+    // Remove highlight from previous
+    if (prevNearest && prevNearest !== nearestHideable) {
+      prevNearest.group.traverse((child) => {
+        if (child.isMesh) {
+          child.material.emissive?.setHex(0x000000);
+        }
+      });
+    }
+
+    // Add highlight to current
     if (nearestHideable) {
+      nearestHideable.group.traverse((child) => {
+        if (child.isMesh) {
+          child.material.emissive?.setHex(0x444400);
+        }
+      });
       hideZone.classList.add('visible');
       hideBtn.textContent = 'HIDE';
     } else {
