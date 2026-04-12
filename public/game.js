@@ -171,54 +171,54 @@ scene.add(tvGlow);
 // ========== THREE-PERSON SOFA ==========
 const sofaMat = mat(0x3366AA);
 const sofaLegMat = mat(0x888888);
+const sofaGroup = new THREE.Group();
 
-// Seat cushion
+// Seat cushion (built at origin, group moves it)
 const sofaSeat = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.3, 1.0), sofaMat);
-sofaSeat.position.set(-3.5, 0.5, -1);
+sofaSeat.position.set(0, 0.5, 0);
 sofaSeat.castShadow = true;
-scene.add(sofaSeat);
+sofaGroup.add(sofaSeat);
 
 // Back rest
 const sofaBack = new THREE.Mesh(new THREE.BoxGeometry(3.0, 1.0, 0.2), sofaMat);
-sofaBack.position.set(-3.5, 1.15, -1.5);
+sofaBack.position.set(0, 1.15, -0.5);
 sofaBack.castShadow = true;
-scene.add(sofaBack);
+sofaGroup.add(sofaBack);
 
 // Left armrest
 const sofaArmL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 1.0), sofaMat);
-sofaArmL.position.set(-5.1, 0.65, -1);
+sofaArmL.position.set(-1.6, 0.65, 0);
 sofaArmL.castShadow = true;
-scene.add(sofaArmL);
+sofaGroup.add(sofaArmL);
 
 // Right armrest
 const sofaArmR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 1.0), sofaMat);
-sofaArmR.position.set(-1.9, 0.65, -1);
+sofaArmR.position.set(1.6, 0.65, 0);
 sofaArmR.castShadow = true;
-scene.add(sofaArmR);
+sofaGroup.add(sofaArmR);
 
-// Cushion dividers (two lines on the seat)
+// Cushion dividers
 const dividerMat = mat(0x2B5699);
 const divider1 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.05, 0.9), dividerMat);
-divider1.position.set(-4.0, 0.68, -1);
-scene.add(divider1);
+divider1.position.set(-0.5, 0.68, 0);
+sofaGroup.add(divider1);
 const divider2 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.05, 0.9), dividerMat);
-divider2.position.set(-3.0, 0.68, -1);
-scene.add(divider2);
+divider2.position.set(0.5, 0.68, 0);
+sofaGroup.add(divider2);
 
 // Legs
 const sofaLegGeo = new THREE.BoxGeometry(0.1, 0.35, 0.1);
-const sofaLegPositions = [
-  [-4.9, 0.175, -0.55],
-  [-2.1, 0.175, -0.55],
-  [-4.9, 0.175, -1.4],
-  [-2.1, 0.175, -1.4],
-];
-sofaLegPositions.forEach(([x, y, z]) => {
+[[-1.4, 0.175, 0.45], [1.4, 0.175, 0.45], [-1.4, 0.175, -0.4], [1.4, 0.175, -0.4]].forEach(([x, y, z]) => {
   const leg = new THREE.Mesh(sofaLegGeo, sofaLegMat);
   leg.position.set(x, y, z);
   leg.castShadow = true;
-  scene.add(leg);
+  sofaGroup.add(leg);
 });
+
+// Position sofa in room center, angled to face both fireplace and TV
+sofaGroup.position.set(1, 0, 1);
+sofaGroup.rotation.y = -0.4; // angled toward fireplace + TV area
+scene.add(sofaGroup);
 
 // ========== RUG ==========
 const rugMat = mat(0xCC4444);
@@ -237,8 +237,8 @@ const colliders = [
   { min: new THREE.Vector3(-1.3, 0, -5.0), max: new THREE.Vector3(1.3, 2.4, -4.5) },
   // TV stand + TV
   { min: new THREE.Vector3(3.3, 0, -3.8), max: new THREE.Vector3(5.7, 2.3, -3.2) },
-  // Sofa
-  { min: new THREE.Vector3(-5.3, 0, -1.7), max: new THREE.Vector3(-1.7, 1.2, -0.4) },
+  // Sofa (axis-aligned bounding box for rotated sofa at (1, 0, 1))
+  { min: new THREE.Vector3(-0.8, 0, -0.2), max: new THREE.Vector3(2.8, 1.2, 2.0) },
 ];
 
 // ========== ROBLOX CHARACTER ==========
