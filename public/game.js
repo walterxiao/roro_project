@@ -131,15 +131,15 @@ const tableMat = mat(0x6B3A2A);
 const tableX = ROOM_W / 2 + DINING_W / 2; // center of dining room
 
 // Table top
-const tableTop = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.12, 1.6), tableMat);
-tableTop.position.set(tableX, 0.78, 0);
+const tableTop = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.15, 2.4), tableMat);
+tableTop.position.set(tableX, 0.9, 0);
 tableTop.castShadow = true;
 scene.add(tableTop);
 
 // Table legs
-const tLegGeo = new THREE.BoxGeometry(0.12, 0.72, 0.12);
+const tLegGeo = new THREE.BoxGeometry(0.15, 0.85, 0.15);
 const tLegMat = mat(0x5C3020);
-[[-1.3, 0.36, -0.65], [1.3, 0.36, -0.65], [-1.3, 0.36, 0.65], [1.3, 0.36, 0.65]].forEach(([lx, ly, lz]) => {
+[[-2.0, 0.425, -1.0], [2.0, 0.425, -1.0], [-2.0, 0.425, 1.0], [2.0, 0.425, 1.0]].forEach(([lx, ly, lz]) => {
   const tLeg = new THREE.Mesh(tLegGeo, tLegMat);
   tLeg.position.set(tableX + lx, ly, lz);
   tLeg.castShadow = true;
@@ -149,25 +149,26 @@ const tLegMat = mat(0x5C3020);
 // ---- 6 Dining Chairs ----
 const dChairMat = mat(0x8B5E3C);
 const dChairLegMat = mat(0x555555);
+const chairColliders = [];
 
 function addDiningChair(cx, cz, facingAngle) {
   const chairGrp = new THREE.Group();
 
   // Seat
-  const cSeat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.5), dChairMat);
-  cSeat.position.y = 0.48;
+  const cSeat = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 0.8), dChairMat);
+  cSeat.position.y = 0.55;
   cSeat.castShadow = true;
   chairGrp.add(cSeat);
 
   // Backrest
-  const cBack = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.06), dChairMat);
-  cBack.position.set(0, 0.82, -0.22);
+  const cBack = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.08), dChairMat);
+  cBack.position.set(0, 1.0, -0.36);
   cBack.castShadow = true;
   chairGrp.add(cBack);
 
   // 4 legs
-  const cLegGeo = new THREE.BoxGeometry(0.05, 0.44, 0.05);
-  [[-0.2, 0.22, -0.2], [0.2, 0.22, -0.2], [-0.2, 0.22, 0.2], [0.2, 0.22, 0.2]].forEach(([lx, ly, lz]) => {
+  const cLegGeo = new THREE.BoxGeometry(0.07, 0.5, 0.07);
+  [[-0.32, 0.25, -0.32], [0.32, 0.25, -0.32], [-0.32, 0.25, 0.32], [0.32, 0.25, 0.32]].forEach(([lx, ly, lz]) => {
     const cLeg = new THREE.Mesh(cLegGeo, dChairLegMat);
     cLeg.position.set(lx, ly, lz);
     cLeg.castShadow = true;
@@ -177,17 +178,21 @@ function addDiningChair(cx, cz, facingAngle) {
   chairGrp.position.set(cx, 0, cz);
   chairGrp.rotation.y = facingAngle;
   scene.add(chairGrp);
+
+  // Add collision (axis-aligned box around chair position)
+  chairColliders.push({
+    min: new THREE.Vector3(cx - 0.5, 0, cz - 0.5),
+    max: new THREE.Vector3(cx + 0.5, 1.4, cz + 0.5),
+  });
 }
 
 // 2 chairs on each long side, 1 at each short end
-// Long sides (facing the table center from +z and -z)
-addDiningChair(tableX - 0.8, -1.2, 0);          // back-left
-addDiningChair(tableX + 0.8, -1.2, 0);          // back-right
-addDiningChair(tableX - 0.8, 1.2, Math.PI);     // front-left
-addDiningChair(tableX + 0.8, 1.2, Math.PI);     // front-right
-// Short ends
-addDiningChair(tableX - 2.0, 0, Math.PI / 2);   // left end
-addDiningChair(tableX + 2.0, 0, -Math.PI / 2);  // right end
+addDiningChair(tableX - 1.2, -1.8, 0);          // back-left
+addDiningChair(tableX + 1.2, -1.8, 0);          // back-right
+addDiningChair(tableX - 1.2, 1.8, Math.PI);     // front-left
+addDiningChair(tableX + 1.2, 1.8, Math.PI);     // front-right
+addDiningChair(tableX - 2.9, 0, Math.PI / 2);   // left end
+addDiningChair(tableX + 2.9, 0, -Math.PI / 2);  // right end
 
 // ========== FIREPLACE ==========
 const brickMat = mat(0x8B3A2A);
@@ -339,7 +344,9 @@ const colliders = [
   // Sofa
   { min: new THREE.Vector3(-0.8, 0, -0.2), max: new THREE.Vector3(2.8, 1.2, 2.0) },
   // Dining table
-  { min: new THREE.Vector3(tableX - 1.6, 0, -0.9), max: new THREE.Vector3(tableX + 1.6, 0.9, 0.9) },
+  { min: new THREE.Vector3(tableX - 2.4, 0, -1.3), max: new THREE.Vector3(tableX + 2.4, 1.0, 1.3) },
+  // Chair colliders added dynamically
+  ...chairColliders,
 ];
 
 // ========== ROBLOX CHARACTER ==========
