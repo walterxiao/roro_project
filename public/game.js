@@ -194,6 +194,9 @@ setOnMessage((msg) => {
     const rp = remotePlayers.get(msg.id);
     if (rp) { rp.char.group.visible = false; rp.hiddenFi = msg.furnitureIndex; }
     hiddenHiderFurniture.set(msg.id, msg.furnitureIndex);
+    // Start continuous shake with the server-assigned amplitude
+    const amp = (typeof msg.amplitude === 'number') ? msg.amplitude : (0.05 + Math.random() * 0.05);
+    shaking.set(msg.furnitureIndex, { amp, phase: Math.random() * 1000 });
   }
 
   if (msg.type === 'playerUnhid') {
@@ -202,6 +205,8 @@ setOnMessage((msg) => {
       rp.char.group.visible = true; rp.hiddenFi = -1;
       if (msg.pos) { rp.targetPos.set(msg.pos.x, 0, msg.pos.z); rp.char.group.position.copy(rp.targetPos); }
     }
+    const fi = hiddenHiderFurniture.get(msg.id);
+    if (fi != null) shaking.delete(fi);
     hiddenHiderFurniture.delete(msg.id);
   }
 
@@ -217,20 +222,9 @@ setOnMessage((msg) => {
     playDingDong(volume);
   }
 
-  if (msg.type === 'shake') {
-    const duration = msg.duration || 1.0;
-    const amp = msg.amplitude != null ? msg.amplitude : 1.0;
-    for (const fi of msg.furnitureIndices) {
-      const current = shaking.get(fi) || { duration: 0, amp: 0 };
-      // Keep the larger effect (longer or more intense)
-      shaking.set(fi, {
-        duration: Math.max(current.duration, duration),
-        amp: Math.max(current.amp, amp),
-      });
-    }
-  }
-
   if (msg.type === 'hiderCaught') {
+    const fi = hiddenHiderFurniture.get(msg.hiderId);
+    if (fi != null) shaking.delete(fi);
     hiddenHiderFurniture.delete(msg.hiderId);
     const rp = remotePlayers.get(msg.hiderId);
     if (rp) rp.char.group.visible = false;
@@ -278,6 +272,8 @@ setOnMessage((msg) => {
     }
 
     if (msg.found) {
+      const prevFi = hiddenHiderFurniture.get(msg.hiderId);
+      if (prevFi != null) shaking.delete(prevFi);
       hiddenHiderFurniture.delete(msg.hiderId);
       if (h) {
         h.group.traverse((c) => { if (c.isMesh) c.material.emissive?.setHex(0x004400); });
@@ -401,23 +397,23 @@ function animate() {
   const canMove = (role === 'hider' && (phase === 'hiding' || phase === 'seeking')) ||
                   (role === 'seeker' && phase === 'seeking');
 
-  // --- SHAKING FURNITURE (server-driven) ---
+  // --- SHAKING FURNITURE (continuous while a hider is inside) ---
   const t = clock.elapsedTime;
+  // Reset every furniture to rest each frame
   for (const h of hideables) {
-    const fi = hideables.indexOf(h);
-    const state = shaking.get(fi);
-    if (state && state.duration > 0) {
-      const a = state.amp * .04;
-      h.group.position.x = h.pos.x + Math.sin(t * 30) * a;
-      h.group.position.z = h.pos.z + Math.cos(t * 39) * a;
-      h.group.rotation.z = Math.sin(t * 21) * .02 * state.amp;
-      state.duration -= dt;
-    } else if (shaking.has(fi)) {
-      h.group.position.x = h.pos.x;
-      h.group.position.z = h.pos.z;
-      h.group.rotation.z = 0;
-      shaking.delete(fi);
-    }
+    h.group.position.x = h.pos.x;
+    h.group.position.z = h.pos.z;
+    h.group.rotation.z = 0;
+  }
+  // Apply continuous shake for any occupied furniture
+  for (const [fi, state] of shaking) {
+    const h = hideables[fi];
+    if (!h) continue;
+    const a = state.amp;
+    const ph = state.phase || 0;
+    h.group.position.x = h.pos.x + Math.sin(t * 30 + ph) * a;
+    h.group.position.z = h.pos.z + Math.cos(t * 39 + ph * 1.3) * a;
+    h.group.rotation.z = Math.sin(t * 21 + ph * 0.7) * 0.02 * (a / 0.1);
   }
 
   // --- MOVEMENT ---
