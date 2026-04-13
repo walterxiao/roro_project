@@ -24,11 +24,114 @@ function addWall(w, h, d, x, y, z) {
   scene.add(wall); walls.push(wall); return wall;
 }
 
-// Outer walls
+// Outer walls — east wall split for garden doorway (z=-2 to z=2)
 addWall(LIB_W, LIB_H, 0.2, 0, LIB_H / 2, -LIB_D / 2);
 addWall(LIB_W, LIB_H, 0.2, 0, LIB_H / 2, LIB_D / 2);
 addWall(0.2, LIB_H, LIB_D, -LIB_W / 2, LIB_H / 2, 0);
-addWall(0.2, LIB_H, LIB_D, LIB_W / 2, LIB_H / 2, 0);
+// East wall split (opening x=LIB_W/2, z from -2 to 2)
+addWall(0.2, LIB_H, 10, LIB_W / 2, LIB_H / 2, -7);
+addWall(0.2, LIB_H, 10, LIB_W / 2, LIB_H / 2, 7);
+addWall(0.2, 0.6, 4, LIB_W / 2, LIB_H - 0.3, 0);
+
+// ======== GARDEN (east side) ========
+const GARDEN_W = 14, GARDEN_D = 16;
+const GARDEN_X = LIB_W / 2 + GARDEN_W / 2;
+// Grass floor
+const grassMat = mat(0x4caa3f);
+const gardenFloor = new THREE.Mesh(new THREE.BoxGeometry(GARDEN_W, 0.2, GARDEN_D), grassMat);
+gardenFloor.position.set(GARDEN_X, -0.1, 0); gardenFloor.receiveShadow = true; scene.add(gardenFloor);
+// Garden walls (low stone — hip height, for boundaries)
+const stoneMat = mat(0x9a8f7c);
+function addGardenWall(w, h, d, x, y, z) {
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), stoneMat);
+  wall.position.set(x, y, z); wall.receiveShadow = true; wall.castShadow = true; scene.add(wall); return wall;
+}
+addGardenWall(GARDEN_W, 1.0, 0.2, GARDEN_X, 0.5, -GARDEN_D / 2);       // north
+addGardenWall(GARDEN_W, 1.0, 0.2, GARDEN_X, 0.5, GARDEN_D / 2);        // south
+addGardenWall(0.2, 1.0, GARDEN_D, GARDEN_X + GARDEN_W / 2, 0.5, 0);    // east
+
+// Trees
+function makeTree(cx, cz, scale = 1) {
+  const g = new THREE.Group();
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2 * scale, 0.25 * scale, 1.6 * scale, 8), mat(0x6B3A1E));
+  trunk.position.y = 0.8 * scale; trunk.castShadow = true; g.add(trunk);
+  const foliage1 = new THREE.Mesh(new THREE.SphereGeometry(0.9 * scale, 10, 8), mat(0x2d7a2d));
+  foliage1.position.y = 1.8 * scale; foliage1.castShadow = true; g.add(foliage1);
+  const foliage2 = new THREE.Mesh(new THREE.SphereGeometry(0.7 * scale, 10, 8), mat(0x3a9a3a));
+  foliage2.position.set(0.3 * scale, 2.3 * scale, -0.2 * scale); g.add(foliage2);
+  const foliage3 = new THREE.Mesh(new THREE.SphereGeometry(0.6 * scale, 10, 8), mat(0x44aa44));
+  foliage3.position.set(-0.3 * scale, 2.1 * scale, 0.2 * scale); g.add(foliage3);
+  g.position.set(cx, 0, cz); scene.add(g);
+  return g;
+}
+const tree1 = makeTree(GARDEN_X - 4, -6, 1.1);
+const tree2 = makeTree(GARDEN_X + 4, -5, 1.0);
+const tree3 = makeTree(GARDEN_X + 4, 5, 1.2);
+const tree4 = makeTree(GARDEN_X - 4, 6, 0.95);
+
+// Bushes
+function makeBush(cx, cz) {
+  const g = new THREE.Group();
+  const b1 = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 6), mat(0x3a8a3a));
+  b1.position.y = 0.4; b1.castShadow = true; g.add(b1);
+  const b2 = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6), mat(0x48a048));
+  b2.position.set(0.4, 0.3, 0.1); g.add(b2);
+  const b3 = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 6), mat(0x55b855));
+  b3.position.set(-0.35, 0.28, 0.2); g.add(b3);
+  g.position.set(cx, 0, cz); scene.add(g);
+  return g;
+}
+const bush1 = makeBush(GARDEN_X - 2, -1);
+const bush2 = makeBush(GARDEN_X + 2, 1);
+const bush3 = makeBush(GARDEN_X + 5, -2);
+
+// Flower beds (colorful tufts)
+function makeFlowerBed(cx, cz) {
+  const g = new THREE.Group();
+  const soil = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.15, 0.8), mat(0x5a3a22));
+  soil.position.y = 0.075; g.add(soil);
+  const colors = [0xff4477, 0xffdd22, 0xff8833, 0xdd44cc, 0xffffff];
+  for (let i = 0; i < 10; i++) {
+    const stem = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.25, 0.04), mat(0x338833));
+    stem.position.set(-0.5 + Math.random() * 1.0, 0.28, -0.3 + Math.random() * 0.6);
+    g.add(stem);
+    const flower = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 5), mat(colors[Math.floor(Math.random() * colors.length)]));
+    flower.position.set(stem.position.x, 0.45, stem.position.z);
+    g.add(flower);
+  }
+  g.position.set(cx, 0, cz); scene.add(g);
+  return g;
+}
+const flowerBed1 = makeFlowerBed(GARDEN_X - 3, 3);
+const flowerBed2 = makeFlowerBed(GARDEN_X + 3, -3);
+
+// Bench
+const bench = new THREE.Group();
+const benchSeat = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 0.5), mat(0x6B3A1E));
+benchSeat.position.y = 0.5; benchSeat.castShadow = true; bench.add(benchSeat);
+const benchBack = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.6, 0.1), mat(0x6B3A1E));
+benchBack.position.set(0, 0.8, -0.2); benchBack.castShadow = true; bench.add(benchBack);
+for (const [x, y, z] of [[-0.8, 0.25, -0.2], [0.8, 0.25, -0.2], [-0.8, 0.25, 0.2], [0.8, 0.25, 0.2]]) {
+  const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.08), mat(0x333333));
+  leg.position.set(x, y, z); bench.add(leg);
+}
+bench.position.set(GARDEN_X, 0, 6);
+bench.rotation.y = Math.PI;
+scene.add(bench);
+
+// Fountain
+const fountain = new THREE.Group();
+const fountainBase = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.4, 0.3, 16), mat(0xaaaaaa));
+fountainBase.position.y = 0.15; fountainBase.castShadow = true; fountain.add(fountainBase);
+const fountainWater = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.1, 16),
+  new THREE.MeshStandardMaterial({ color: 0x4488cc, transparent: true, opacity: 0.7, emissive: 0x224466, emissiveIntensity: 0.2 }));
+fountainWater.position.y = 0.32; fountain.add(fountainWater);
+const fountainPillar = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.8, 8), mat(0xbbbbbb));
+fountainPillar.position.y = 0.7; fountainPillar.castShadow = true; fountain.add(fountainPillar);
+const fountainTop = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.15, 12), mat(0xaaaaaa));
+fountainTop.position.y = 1.15; fountainTop.castShadow = true; fountain.add(fountainTop);
+fountain.position.set(GARDEN_X, 0, 0);
+scene.add(fountain);
 
 // Lighting
 const ambient = new THREE.AmbientLight(0xffffff, 0.4); scene.add(ambient);
@@ -269,6 +372,17 @@ const hideables = [
   { group: toilet1, pos: toilet1.position.clone(), name: 'Toilet 1' },
   { group: toilet2, pos: toilet2.position.clone(), name: 'Toilet 2' },
   { group: toilet3, pos: toilet3.position.clone(), name: 'Toilet 3' },
+  { group: tree1, pos: tree1.position.clone(), name: 'Tree 1' },
+  { group: tree2, pos: tree2.position.clone(), name: 'Tree 2' },
+  { group: tree3, pos: tree3.position.clone(), name: 'Tree 3' },
+  { group: tree4, pos: tree4.position.clone(), name: 'Tree 4' },
+  { group: bush1, pos: bush1.position.clone(), name: 'Bush 1' },
+  { group: bush2, pos: bush2.position.clone(), name: 'Bush 2' },
+  { group: bush3, pos: bush3.position.clone(), name: 'Bush 3' },
+  { group: flowerBed1, pos: flowerBed1.position.clone(), name: 'Flower Bed 1' },
+  { group: flowerBed2, pos: flowerBed2.position.clone(), name: 'Flower Bed 2' },
+  { group: bench, pos: bench.position.clone(), name: 'Bench' },
+  { group: fountain, pos: fountain.position.clone(), name: 'Fountain' },
 ];
 // Add the 6 middle shelves to hideables
 shelves.slice(1).forEach((s, i) => hideables.push({ group: s, pos: s.position.clone(), name: 'Shelf ' + (i+1) }));
@@ -282,7 +396,9 @@ const hideableBounds = hideables.map(h => {
 const colliders = [
   // Outer walls
   { min: new THREE.Vector3(-LIB_W/2, 0, -LIB_D/2), max: new THREE.Vector3(-LIB_W/2+.3, LIB_H, LIB_D/2) },
-  { min: new THREE.Vector3(LIB_W/2-.3, 0, -LIB_D/2), max: new THREE.Vector3(LIB_W/2, LIB_H, LIB_D/2) },
+  // East wall split for garden doorway (z=-2 to z=2)
+  { min: new THREE.Vector3(LIB_W/2-.3, 0, -LIB_D/2), max: new THREE.Vector3(LIB_W/2, LIB_H, -2) },
+  { min: new THREE.Vector3(LIB_W/2-.3, 0, 2), max: new THREE.Vector3(LIB_W/2, LIB_H, LIB_D/2) },
   { min: new THREE.Vector3(-LIB_W/2, 0, -LIB_D/2), max: new THREE.Vector3(LIB_W/2, LIB_H, -LIB_D/2+.3) },
   { min: new THREE.Vector3(-LIB_W/2, 0, LIB_D/2-.3), max: new THREE.Vector3(LIB_W/2, LIB_H, LIB_D/2) },
   // Restroom top partition — split to leave a doorway from x=-12.75 to x=-11.25
@@ -290,6 +406,10 @@ const colliders = [
   { min: new THREE.Vector3(-LIB_W/2+2.75, 0, LIB_D/2-4), max: new THREE.Vector3(-LIB_W/2+4, LIB_H, LIB_D/2-4+.3) },
   // Restroom east partition
   { min: new THREE.Vector3(-LIB_W/2+4-.3, 0, LIB_D/2-4), max: new THREE.Vector3(-LIB_W/2+4, LIB_H, LIB_D/2) },
+  // Garden boundary walls (low stone, but still block movement)
+  { min: new THREE.Vector3(LIB_W/2, 0, -GARDEN_D/2), max: new THREE.Vector3(LIB_W/2 + GARDEN_W, 1.0, -GARDEN_D/2+.3) }, // north
+  { min: new THREE.Vector3(LIB_W/2, 0, GARDEN_D/2-.3), max: new THREE.Vector3(LIB_W/2 + GARDEN_W, 1.0, GARDEN_D/2) },    // south
+  { min: new THREE.Vector3(LIB_W/2 + GARDEN_W - .3, 0, -GARDEN_D/2), max: new THREE.Vector3(LIB_W/2 + GARDEN_W, 1.0, GARDEN_D/2) }, // east
 ];
 
 // Add furniture colliders from their bounding boxes
@@ -305,6 +425,8 @@ const spawnPoints = [
   { x: -10, z: -9 }, { x: 4, z: -9 }, { x: -6, z: -3 }, { x: 1, z: -3 },
   { x: -6, z: 1 }, { x: 1, z: 1 }, { x: -6, z: 5 }, { x: 1, z: 5 },
   { x: 10, z: -9 }, { x: 10, z: 5 }, { x: -10, z: 5 }, { x: 10, z: 0 },
+  // Garden spawns
+  { x: LIB_W/2 + 3, z: -5 }, { x: LIB_W/2 + 10, z: 4 }, { x: LIB_W/2 + 7, z: 0 },
 ];
 
 // Empty/not applicable in this map
@@ -312,10 +434,17 @@ const fireParts = [];
 const tvGlow = { intensity: 0 };
 
 // Room detection: single large room
-function roomAt(x, z) { return 'library'; }
+function roomAt(x, z) {
+  if (x > LIB_W / 2) return 'garden';
+  return 'library';
+}
 
 // Bird's-eye parameters per room
 function birdsEyeRoom(x, z) {
+  if (x > LIB_W / 2) {
+    // Garden
+    return { cx: GARDEN_X, cz: 0, w: GARDEN_W, d: GARDEN_D };
+  }
   return { cx: 0, cz: 0, w: LIB_W, d: LIB_D };
 }
 
