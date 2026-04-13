@@ -6,6 +6,13 @@ const { WebSocketServer } = require('ws');
 const app = express();
 const PORT = process.env.PORT || 1030;
 
+// Disable caching so browsers always get the latest JS/HTML
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 

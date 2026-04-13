@@ -420,9 +420,10 @@ function animate() {
     if (!h) continue;
     const a = state.amp;
     const ph = state.phase || 0;
-    h.group.position.x = h.pos.x + Math.sin(t * 30 + ph) * a;
-    h.group.position.z = h.pos.z + Math.cos(t * 39 + ph * 1.3) * a;
-    h.group.rotation.z = Math.sin(t * 21 + ph * 0.7) * (a * 0.2);
+    // Slow, breathing-like motion (~1 Hz) instead of high-frequency buzz
+    h.group.position.x = h.pos.x + Math.sin(t * 6 + ph) * a;
+    h.group.position.z = h.pos.z + Math.cos(t * 7 + ph * 1.3) * a;
+    h.group.rotation.z = Math.sin(t * 4 + ph * 0.7) * (a * 0.15);
   }
 
   // --- MOVEMENT ---
