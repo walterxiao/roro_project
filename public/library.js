@@ -202,9 +202,28 @@ basketGroup.position.set(0.7, 0, LIB_D/2 - 1.5);
 scene.add(basketGroup);
 
 // ======== RESTROOM (bottom-left partition) ========
-// Partition walls forming a small restroom
-addWall(4, LIB_H, 0.2, -LIB_W/2 + 2, LIB_H/2, LIB_D/2 - 4);           // top partition
-addWall(0.2, LIB_H, 4, -LIB_W/2 + 4, LIB_H/2, LIB_D/2 - 2);           // right partition (with gap for door at top)
+// Top partition split for a 1.5u wide door opening (centered)
+// Left segment: x=[-14, -12.75], width=1.25
+addWall(1.25, LIB_H, 0.2, -LIB_W/2 + 0.625, LIB_H/2, LIB_D/2 - 4);
+// Right segment: x=[-11.25, -10], width=1.25
+addWall(1.25, LIB_H, 0.2, -LIB_W/2 + 3.375, LIB_H/2, LIB_D/2 - 4);
+// Header above the doorway
+addWall(1.5, 0.6, 0.2, -LIB_W/2 + 2, LIB_H - 0.3, LIB_D/2 - 4);
+// Right (east) partition unchanged
+addWall(0.2, LIB_H, 4, -LIB_W/2 + 4, LIB_H/2, LIB_D/2 - 2);
+
+// Door (open, leaning on the frame)
+const doorGroup = new THREE.Group();
+const doorMat = mat(0x6B3A2A);
+const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.2, 0.08), doorMat);
+doorPanel.position.set(0, 1.1, 0); doorPanel.castShadow = true; doorGroup.add(doorPanel);
+// Door handle
+const handle = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.12), mat(0xccaa44));
+handle.position.set(0.55, 1.05, 0.08); doorGroup.add(handle);
+// Hinge at left edge of doorway
+doorGroup.position.set(-LIB_W/2 + 2.75, 0, LIB_D/2 - 4);
+doorGroup.rotation.y = -Math.PI / 3; // door open at ~60 degrees
+scene.add(doorGroup);
 
 // Sinks
 function makeSink(cx, cz) {
@@ -269,8 +288,10 @@ const colliders = [
   { min: new THREE.Vector3(LIB_W/2-.3, 0, -LIB_D/2), max: new THREE.Vector3(LIB_W/2, LIB_H, LIB_D/2) },
   { min: new THREE.Vector3(-LIB_W/2, 0, -LIB_D/2), max: new THREE.Vector3(LIB_W/2, LIB_H, -LIB_D/2+.3) },
   { min: new THREE.Vector3(-LIB_W/2, 0, LIB_D/2-.3), max: new THREE.Vector3(LIB_W/2, LIB_H, LIB_D/2) },
-  // Restroom partitions
-  { min: new THREE.Vector3(-LIB_W/2, 0, LIB_D/2-4), max: new THREE.Vector3(-LIB_W/2+4, LIB_H, LIB_D/2-4+.3) },
+  // Restroom top partition — split to leave a doorway from x=-12.75 to x=-11.25
+  { min: new THREE.Vector3(-LIB_W/2, 0, LIB_D/2-4), max: new THREE.Vector3(-LIB_W/2+1.25, LIB_H, LIB_D/2-4+.3) },
+  { min: new THREE.Vector3(-LIB_W/2+2.75, 0, LIB_D/2-4), max: new THREE.Vector3(-LIB_W/2+4, LIB_H, LIB_D/2-4+.3) },
+  // Restroom east partition
   { min: new THREE.Vector3(-LIB_W/2+4-.3, 0, LIB_D/2-4), max: new THREE.Vector3(-LIB_W/2+4, LIB_H, LIB_D/2) },
 ];
 
