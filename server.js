@@ -157,7 +157,7 @@ function startDingTimer() {
         broadcast({ type: 'ding', pos: hider.pos });
       }, i * 500);
     });
-  }, 20000);
+  }, 15000);
 }
 
 function startShakeTimer() {
