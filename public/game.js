@@ -156,11 +156,9 @@ function clearHighlight(h) {
 // ========== INIT (game module loaded after lobby start) ==========
 const myId = getMyId();
 const colorIdx = myId ? myId % 6 : 0;
-myChar = createCharacter(colorIdx);
-
-// Use server-assigned spawn position from the lobby's player list
 const existingPlayers = window.__roro?.getPlayers?.() || [];
 const me = existingPlayers.find(p => p.id === myId);
+myChar = createCharacter(colorIdx, me?.role || 'seeker');
 if (me && me.pos) {
   charPos.set(me.pos.x, 0, me.pos.z);
   charRotY = me.rot || 0;
@@ -331,7 +329,7 @@ setOnMessage((msg) => {
 
 function addRemotePlayer(p) {
   if (p.id === getMyId() || remotePlayers.has(p.id)) return;
-  const char = createCharacter(p.id % 6);
+  const char = createCharacter(p.id % 6, p.role || 'seeker');
   char.group.position.set(p.pos.x, 0, p.pos.z);
   char.group.rotation.y = p.rot;
   if (p.isHiding || p.isFound) char.group.visible = false;
