@@ -143,7 +143,7 @@ function onActionBtn() {
   } else if (role === 'seeker' && phase === 'seeking' && nearestHideable) {
     // Search
     const fi = hideables.indexOf(nearestHideable);
-    send({ type: 'search', furnitureIndex: fi });
+    send({ type: 'search', furnitureIndex: fi, bounds: hideableBounds[fi] });
     clearHighlight(nearestHideable);
     nearestHideable = null;
     hideZone.classList.remove('visible');
@@ -177,6 +177,8 @@ for (const p of existingPlayers) {
 setOnMessage((msg) => {
 
   if (msg.type === 'playerJoined') addRemotePlayer(msg.player);
+
+  if (msg.type === 'allPlayers') reconcileRemotePlayers(msg.players);
 
   if (msg.type === 'playerLeft') {
     const rp = remotePlayers.get(msg.id);
@@ -341,12 +343,41 @@ setOnMessage((msg) => {
 
 function addRemotePlayer(p) {
   if (p.id === getMyId() || remotePlayers.has(p.id)) return;
-  const char = createCharacter(p.id % 6, p.role || 'seeker');
-  char.group.position.set(p.pos.x, 0, p.pos.z);
-  char.group.rotation.y = p.rot;
-  if (p.isHiding || p.isFound) char.group.visible = false;
-  const rp = { char, targetPos: new THREE.Vector3(p.pos.x, 0, p.pos.z), targetRot: p.rot };
+  const role = p.role || 'seeker';
+  const char = createCharacter(p.id % 6, role);
+  const px = (p.pos && typeof p.pos.x === 'number') ? p.pos.x : 0;
+  const pz = (p.pos && typeof p.pos.z === 'number') ? p.pos.z : 0;
+  const pr = typeof p.rot === 'number' ? p.rot : 0;
+  char.group.position.set(px, 0, pz);
+  char.group.rotation.y = pr;
+  char.group.visible = !(p.isHiding || p.isFound);
+  const rp = { char, targetPos: new THREE.Vector3(px, 0, pz), targetRot: pr, role };
   remotePlayers.set(p.id, rp);
+}
+
+// Reconcile remote players from a full player list (handles missed joins / role changes)
+function reconcileRemotePlayers(list) {
+  const seen = new Set();
+  for (const p of list) {
+    if (p.id === getMyId()) continue;
+    seen.add(p.id);
+    const existing = remotePlayers.get(p.id);
+    if (!existing) {
+      addRemotePlayer(p);
+    } else if (existing.role !== (p.role || 'seeker')) {
+      // Role changed — recreate character
+      scene.remove(existing.char.group);
+      remotePlayers.delete(p.id);
+      addRemotePlayer(p);
+    }
+  }
+  // Remove players that are no longer in the list
+  for (const id of [...remotePlayers.keys()]) {
+    if (!seen.has(id)) {
+      scene.remove(remotePlayers.get(id).char.group);
+      remotePlayers.delete(id);
+    }
+  }
 }
 
 // ========== POSITION BROADCAST ==========

@@ -311,7 +311,19 @@ wss.on('connection', (ws) => {
     }
     if (msg.type === 'search' && player.role === 'seeker' && phase === 'seeking') {
       const fi = msg.furnitureIndex;
-      const found = [...players.values()].find(p => p.role === 'hider' && !p.isFound && p.isHiding && p.hiddenFurniture === fi);
+      const searchBounds = msg.bounds;
+      // Primary match: same furniture index
+      let found = [...players.values()].find(p => p.role === 'hider' && !p.isFound && p.isHiding && p.hiddenFurniture === fi);
+      // Fallback: match by bounds overlap (in case indices drift between clients)
+      if (!found && searchBounds) {
+        found = [...players.values()].find(p => {
+          if (p.role !== 'hider' || p.isFound || !p.isHiding || !p.hiddenBounds) return false;
+          const b = p.hiddenBounds;
+          const overlap = !(searchBounds.maxX < b.minX || searchBounds.minX > b.maxX ||
+                            searchBounds.maxZ < b.minZ || searchBounds.minZ > b.maxZ);
+          return overlap;
+        });
+      }
       if (found) {
         found.isFound = true; found.isHiding = false;
         broadcast({ type: 'searchResult', seekerId: player.id, furnitureIndex: fi, found: true, hiderId: found.id, hiderName: found.name, seekerChances });
