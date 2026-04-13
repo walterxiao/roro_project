@@ -240,13 +240,15 @@ function makeComputerDesk() {
 }
 
 // Right-side computer desks (near entrance area)
+// Moved off the east wall so the garden doorway is clear —
+// now placed along the west wall, facing east into the library
 const compDesk1 = makeComputerDesk();
-compDesk1.position.set(LIB_W/2 - 1.2, 0, -2);
-compDesk1.rotation.y = -Math.PI / 2;
+compDesk1.position.set(-LIB_W/2 + 1.2, 0, -2);
+compDesk1.rotation.y = Math.PI / 2;
 scene.add(compDesk1);
 const compDesk2 = makeComputerDesk();
-compDesk2.position.set(LIB_W/2 - 1.2, 0, 1);
-compDesk2.rotation.y = -Math.PI / 2;
+compDesk2.position.set(-LIB_W/2 + 1.2, 0, 1);
+compDesk2.rotation.y = Math.PI / 2;
 scene.add(compDesk2);
 // Bottom computer desks
 const compDesk3 = makeComputerDesk();
