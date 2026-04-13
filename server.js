@@ -122,7 +122,7 @@ function startDingTimer() {
     hiders.forEach((hider, i) => {
       setTimeout(() => {
         if (phase !== 'seeking' || hider.isFound) return;
-        broadcast({ type: 'ding', pos: hider.pos });
+        broadcast({ type: 'ding', pos: hider.pos, name: hider.name });
       }, i * 500);
     });
   }, 15000);

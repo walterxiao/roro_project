@@ -229,6 +229,7 @@ setOnMessage((msg) => {
     // dist 0 → 1.0,  dist 5 → .57,  dist 10 → .25,  dist 15 → .13,  dist 25+ → floor .04
     const volume = Math.max(0.04, 1 / (1 + dist * dist * 0.03));
     playDingDong(volume);
+    if (msg.name) showToast(msg.name + ' says hi');
   }
 
   if (msg.type === 'hiderCaught') {
