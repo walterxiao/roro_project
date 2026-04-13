@@ -77,7 +77,7 @@ function broadcastPlayers() {
 function endGame(winner, reason) {
   phase = 'gameover';
   if (hideTimer) { clearInterval(hideTimer); hideTimer = null; }
-  if (shakeTimer) { clearInterval(shakeTimer); shakeTimer = null; }
+  if (shakeTimer) { clearTimeout(shakeTimer); shakeTimer = null; }
   if (proxShakeTimer) { clearInterval(proxShakeTimer); proxShakeTimer = null; }
   if (seekTimer) { clearInterval(seekTimer); seekTimer = null; }
   broadcast({ type: 'gameOver', winner, reason });
@@ -98,7 +98,7 @@ function checkGameOver() {
 function resetGame() {
   phase = 'lobby'; seekerChances = 3; hideCountdown = 0; seekCountdown = 0;
   if (hideTimer) { clearInterval(hideTimer); hideTimer = null; }
-  if (shakeTimer) { clearInterval(shakeTimer); shakeTimer = null; }
+  if (shakeTimer) { clearTimeout(shakeTimer); shakeTimer = null; }
   if (proxShakeTimer) { clearInterval(proxShakeTimer); proxShakeTimer = null; }
   if (seekTimer) { clearInterval(seekTimer); seekTimer = null; }
   for (const p of players.values()) {
@@ -144,18 +144,24 @@ function startProxShakeTimer() {
 
 function startShakeTimer() {
   if (shakeTimer) return;
-  shakeTimer = setInterval(() => {
-    // Find all furniture currently hiding someone
-    const occupied = new Set();
-    for (const p of players.values()) {
-      if (p.role === 'hider' && p.isHiding && !p.isFound) occupied.add(p.hiddenFurniture);
-    }
-    if (occupied.size > 0) {
-      // Random amplitude in [0.1, 0.2], shake for 5 seconds
-      const amp = 0.1 + Math.random() * 0.1;
-      broadcast({ type: 'shake', furnitureIndices: [...occupied], duration: 5.0, amplitude: amp });
-    }
-  }, SHAKE_INTERVAL);
+  function scheduleNext() {
+    // Sleep randomly between 15 and 20 seconds, then shake for 3 seconds
+    const sleepMs = 15000 + Math.random() * 5000;
+    shakeTimer = setTimeout(() => {
+      if (phase !== 'hiding' && phase !== 'seeking') return;
+      const occupied = new Set();
+      for (const p of players.values()) {
+        if (p.role === 'hider' && p.isHiding && !p.isFound) occupied.add(p.hiddenFurniture);
+      }
+      if (occupied.size > 0) {
+        // Random amplitude in [0.01, 0.1], shake for 3 seconds
+        const amp = 0.01 + Math.random() * 0.09;
+        broadcast({ type: 'shake', furnitureIndices: [...occupied], duration: 3.0, amplitude: amp });
+      }
+      scheduleNext();
+    }, sleepMs);
+  }
+  scheduleNext();
 }
 
 function startGame(opts = {}) {
