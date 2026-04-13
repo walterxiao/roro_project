@@ -41,9 +41,18 @@ const roomAt = mapRoomAt;
 
 // Ding-dong sound with distance-based volume
 let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+// Resume on first user interaction to satisfy browser autoplay policies
+['click', 'touchstart', 'pointerdown', 'keydown'].forEach(ev =>
+  window.addEventListener(ev, ensureAudio, { once: false, passive: true })
+);
 function playDingDong(volume) {
   try {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    ensureAudio();
+    if (!audioCtx || audioCtx.state !== 'running') return;
     const now = audioCtx.currentTime;
     // Two chime notes: E5 then C5 — classic "ding dong"
     const notes = [659.25, 523.25];
@@ -195,7 +204,7 @@ setOnMessage((msg) => {
     if (rp) { rp.char.group.visible = false; rp.hiddenFi = msg.furnitureIndex; }
     hiddenHiderFurniture.set(msg.id, msg.furnitureIndex);
     // Start continuous shake with the server-assigned amplitude
-    const amp = (typeof msg.amplitude === 'number') ? msg.amplitude : (0.05 + Math.random() * 0.05);
+    const amp = (typeof msg.amplitude === 'number') ? msg.amplitude : (0.01 + Math.random() * 0.04);
     shaking.set(msg.furnitureIndex, { amp, phase: Math.random() * 1000 });
   }
 
@@ -413,7 +422,7 @@ function animate() {
     const ph = state.phase || 0;
     h.group.position.x = h.pos.x + Math.sin(t * 30 + ph) * a;
     h.group.position.z = h.pos.z + Math.cos(t * 39 + ph * 1.3) * a;
-    h.group.rotation.z = Math.sin(t * 21 + ph * 0.7) * 0.02 * (a / 0.1);
+    h.group.rotation.z = Math.sin(t * 21 + ph * 0.7) * (a * 0.5);
   }
 
   // --- MOVEMENT ---
