@@ -228,8 +228,8 @@ wss.on('connection', (ws) => {
     // Hide and unhide allowed in both hiding and seeking phases
     if (msg.type === 'hide' && player.role === 'hider' && (phase === 'hiding' || phase === 'seeking') && !player.isFound) {
       player.isHiding = true; player.hiddenFurniture = msg.furnitureIndex; player.hiddenBounds = msg.bounds || null;
-      // Assign a random constant shake amplitude in [0.01, 0.05] for this hide session
-      const amplitude = 0.01 + Math.random() * 0.04;
+      // Assign a random constant shake amplitude in [0.005, 0.02] for this hide session
+      const amplitude = 0.005 + Math.random() * 0.015;
       player.shakeAmp = amplitude;
       broadcast({ type: 'playerHid', id, furnitureIndex: msg.furnitureIndex, amplitude });
     }

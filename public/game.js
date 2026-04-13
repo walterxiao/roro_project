@@ -204,7 +204,7 @@ setOnMessage((msg) => {
     if (rp) { rp.char.group.visible = false; rp.hiddenFi = msg.furnitureIndex; }
     hiddenHiderFurniture.set(msg.id, msg.furnitureIndex);
     // Start continuous shake with the server-assigned amplitude
-    const amp = (typeof msg.amplitude === 'number') ? msg.amplitude : (0.01 + Math.random() * 0.04);
+    const amp = (typeof msg.amplitude === 'number') ? msg.amplitude : (0.005 + Math.random() * 0.015);
     shaking.set(msg.furnitureIndex, { amp, phase: Math.random() * 1000 });
   }
 
@@ -422,7 +422,7 @@ function animate() {
     const ph = state.phase || 0;
     h.group.position.x = h.pos.x + Math.sin(t * 30 + ph) * a;
     h.group.position.z = h.pos.z + Math.cos(t * 39 + ph * 1.3) * a;
-    h.group.rotation.z = Math.sin(t * 21 + ph * 0.7) * (a * 0.5);
+    h.group.rotation.z = Math.sin(t * 21 + ph * 0.7) * (a * 0.2);
   }
 
   // --- MOVEMENT ---
