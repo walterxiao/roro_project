@@ -33,7 +33,7 @@ window.__roroOnMsg = (msg) => {
     }
     if (msg.phase === 'seeking') {
       blindfold.classList.add('hidden');
-      phaseText.textContent = 'Seeking — 3:00';
+      phaseText.textContent = 'Seeking — 2:00';
       chancesText.textContent = 'Chances: ' + msg.seekerChances;
     }
   }

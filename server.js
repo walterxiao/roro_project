@@ -54,7 +54,7 @@ let proxShakeTimer = null;
 let seekTimer = null;
 let seekCountdown = 0;
 const HIDE_TIME = 30;
-const SEEK_TIME = 180; // 3 minutes
+const SEEK_TIME = 120; // 2 minutes
 const SHAKE_INTERVAL = 30000; // ms
 
 function broadcast(msg, excludeId) {
@@ -198,13 +198,14 @@ function startGame(opts = {}) {
         seekTimer = setInterval(() => {
           seekCountdown--;
           broadcast({ type: 'seekCountdown', seekCountdown });
-          if (seekCountdown <= 30 && seekCountdown > 0) {
+          if (seekCountdown <= 60 && seekCountdown > 0) {
             const occupied = [];
             for (const p of players.values()) {
               if (p.role === 'hider' && p.isHiding && !p.isFound) occupied.push(p.hiddenFurniture);
             }
             if (occupied.length > 0) {
-              broadcast({ type: 'shake', furnitureIndices: occupied, duration: 1.2, amplitude: 0.25 });
+              // Last minute: gentle, barely-noticeable shimmer
+              broadcast({ type: 'shake', furnitureIndices: occupied, duration: 1.2, amplitude: 0.12 });
             }
           }
           if (seekCountdown <= 0) {
