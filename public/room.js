@@ -10,13 +10,8 @@ const ROOM_W = 12, ROOM_D = 10, ROOM_H = 4, DINING_W = 10;
 const floor = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.2, ROOM_D), floorMat);
 floor.position.set(0, -0.1, 0); floor.receiveShadow = true; scene.add(floor);
 
-// Ceiling
-const ceilingMatI = ceilingMat.clone(); ceilingMatI.transparent = true; ceilingMatI.opacity = 1;
-const ceiling = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.2, ROOM_D), ceilingMatI);
-ceiling.position.set(0, ROOM_H + 0.1, 0); scene.add(ceiling);
-
-// Walls array (for camera occlusion)
-const walls = [ceiling];
+// Ceiling removed — open sky
+const walls = [];
 function addWall(w, h, d, x, y, z) {
   const m = wallMat.clone(); m.transparent = true; m.opacity = 1;
   const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
@@ -42,9 +37,6 @@ addWall(0.2, 0.6, 4, ROOM_W / 2, ROOM_H - 0.3, 0);
 // Dining room
 const dFloor = new THREE.Mesh(new THREE.BoxGeometry(DINING_W, 0.2, ROOM_D), floorMat);
 dFloor.position.set(ROOM_W / 2 + DINING_W / 2, -0.1, 0); dFloor.receiveShadow = true; scene.add(dFloor);
-const dCeilMat = ceilingMat.clone(); dCeilMat.transparent = true; dCeilMat.opacity = 1;
-const dCeiling = new THREE.Mesh(new THREE.BoxGeometry(DINING_W, 0.2, ROOM_D), dCeilMat);
-dCeiling.position.set(ROOM_W / 2 + DINING_W / 2, ROOM_H + 0.1, 0); scene.add(dCeiling); walls.push(dCeiling);
 // Dining back wall split to create a doorway into the garage (opening x=11 to x=14)
 addWall(5, ROOM_H, 0.2, 8.5, ROOM_H / 2, -ROOM_D / 2);      // left segment x=6 to 11
 addWall(2, ROOM_H, 0.2, 15, ROOM_H / 2, -ROOM_D / 2);       // right segment x=14 to 16
@@ -97,10 +89,6 @@ const concreteMat = mat(0x6a6a6a);
 const gFloor = new THREE.Mesh(new THREE.BoxGeometry(GARAGE_W, 0.2, GARAGE_D), concreteMat);
 gFloor.position.set(GARAGE_X, -0.1, GARAGE_Z); gFloor.receiveShadow = true; scene.add(gFloor);
 
-// Garage ceiling
-const gCeilMat = ceilingMat.clone(); gCeilMat.transparent = true; gCeilMat.opacity = 1;
-const gCeiling = new THREE.Mesh(new THREE.BoxGeometry(GARAGE_W, 0.2, GARAGE_D), gCeilMat);
-gCeiling.position.set(GARAGE_X, ROOM_H + 0.1, GARAGE_Z); scene.add(gCeiling); walls.push(gCeiling);
 
 // Garage walls
 addWall(GARAGE_W, ROOM_H, 0.2, GARAGE_X, ROOM_H / 2, -13); // back
@@ -308,9 +296,6 @@ const PLAY_W = 10;
 const PLAY_X = -ROOM_W / 2 - PLAY_W / 2;
 const playFloor = new THREE.Mesh(new THREE.BoxGeometry(PLAY_W, 0.2, ROOM_D), mat(0xDDAA88));
 playFloor.position.set(PLAY_X, -0.1, 0); playFloor.receiveShadow = true; scene.add(playFloor);
-const playCeilMat = ceilingMat.clone(); playCeilMat.transparent = true; playCeilMat.opacity = 1;
-const playCeil = new THREE.Mesh(new THREE.BoxGeometry(PLAY_W, 0.2, ROOM_D), playCeilMat);
-playCeil.position.set(PLAY_X, ROOM_H + 0.1, 0); scene.add(playCeil); walls.push(playCeil);
 // Play room walls (left, back, front with opening to office)
 addWall(0.2, ROOM_H, ROOM_D, PLAY_X - PLAY_W / 2, ROOM_H / 2, 0); // far left
 addWall(PLAY_W, ROOM_H, 0.2, PLAY_X, ROOM_H / 2, -ROOM_D / 2);    // back
@@ -356,9 +341,6 @@ scene.add(pokerGroup);
 const OFFICE_Z = ROOM_D / 2 + 5; // center at z=10
 const officeFloor = new THREE.Mesh(new THREE.BoxGeometry(PLAY_W, 0.2, ROOM_D), mat(0xA88870));
 officeFloor.position.set(PLAY_X, -0.1, OFFICE_Z); officeFloor.receiveShadow = true; scene.add(officeFloor);
-const officeCeilMat = ceilingMat.clone(); officeCeilMat.transparent = true; officeCeilMat.opacity = 1;
-const officeCeil = new THREE.Mesh(new THREE.BoxGeometry(PLAY_W, 0.2, ROOM_D), officeCeilMat);
-officeCeil.position.set(PLAY_X, ROOM_H + 0.1, OFFICE_Z); scene.add(officeCeil); walls.push(officeCeil);
 addWall(0.2, ROOM_H, ROOM_D, PLAY_X - PLAY_W / 2, ROOM_H / 2, OFFICE_Z);
 addWall(PLAY_W, ROOM_H, 0.2, PLAY_X, ROOM_H / 2, OFFICE_Z + ROOM_D / 2);
 // Right wall of office — split for opening to middle-south (z=8 to z=12)
@@ -404,9 +386,6 @@ const officeChair2 = makeOfficeChair(PLAY_X + 1.6, OFFICE_Z + 2);
 // ========== MIDDLE-SOUTH ROOM (between living and office, fish tank) ==========
 const midSouthFloor = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.2, ROOM_D), mat(0x8B5E3C));
 midSouthFloor.position.set(0, -0.1, OFFICE_Z); midSouthFloor.receiveShadow = true; scene.add(midSouthFloor);
-const midSouthCeilMat = ceilingMat.clone(); midSouthCeilMat.transparent = true; midSouthCeilMat.opacity = 1;
-const midSouthCeil = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.2, ROOM_D), midSouthCeilMat);
-midSouthCeil.position.set(0, ROOM_H + 0.1, OFFICE_Z); scene.add(midSouthCeil); walls.push(midSouthCeil);
 addWall(ROOM_W, ROOM_H, 0.2, 0, ROOM_H / 2, OFFICE_Z + ROOM_D / 2); // front (south)
 // Right wall of middle-south — split for opening to bedroom (z=8 to z=12)
 addWall(0.2, ROOM_H, 3, ROOM_W / 2, ROOM_H / 2, 6.5);
@@ -480,9 +459,6 @@ const fishTank1 = makeFishTank(2, OFFICE_Z + 3.5);
 const BED_X = ROOM_W / 2 + DINING_W / 2;
 const bedFloor = new THREE.Mesh(new THREE.BoxGeometry(DINING_W, 0.2, ROOM_D), mat(0xBB9977));
 bedFloor.position.set(BED_X, -0.1, OFFICE_Z); bedFloor.receiveShadow = true; scene.add(bedFloor);
-const bedCeilMat = ceilingMat.clone(); bedCeilMat.transparent = true; bedCeilMat.opacity = 1;
-const bedCeil = new THREE.Mesh(new THREE.BoxGeometry(DINING_W, 0.2, ROOM_D), bedCeilMat);
-bedCeil.position.set(BED_X, ROOM_H + 0.1, OFFICE_Z); scene.add(bedCeil); walls.push(bedCeil);
 addWall(DINING_W, ROOM_H, 0.2, BED_X, ROOM_H / 2, OFFICE_Z + ROOM_D / 2);
 addWall(0.2, ROOM_H, ROOM_D, BED_X + DINING_W / 2, ROOM_H / 2, OFFICE_Z);
 

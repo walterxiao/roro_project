@@ -15,10 +15,7 @@ const walls = [];
 const floor = new THREE.Mesh(new THREE.BoxGeometry(LIB_W, 0.2, LIB_D), floorMat);
 floor.position.set(0, -0.1, 0); floor.receiveShadow = true; scene.add(floor);
 
-// Ceiling
-const ceilMatI = ceilingMat.clone(); ceilMatI.transparent = true; ceilMatI.opacity = 1;
-const ceiling = new THREE.Mesh(new THREE.BoxGeometry(LIB_W, 0.2, LIB_D), ceilMatI);
-ceiling.position.set(0, LIB_H + 0.1, 0); scene.add(ceiling); walls.push(ceiling);
+// Ceiling removed — open sky
 
 function addWall(w, h, d, x, y, z) {
   const m = wallMat.clone(); m.transparent = true; m.opacity = 1;
