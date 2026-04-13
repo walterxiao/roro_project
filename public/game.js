@@ -206,6 +206,8 @@ setOnMessage((msg) => {
   }
 
   if (msg.type === 'ding' && msg.pos) {
+    // Only seekers hear the ding-dong
+    if (getMyRole() !== 'seeker') return;
     // Compute distance-based volume relative to my character's position
     const dx = charPos.x - msg.pos.x;
     const dz = charPos.z - msg.pos.z;
