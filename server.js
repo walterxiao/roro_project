@@ -154,8 +154,8 @@ function startShakeTimer() {
         if (p.role === 'hider' && p.isHiding && !p.isFound) occupied.add(p.hiddenFurniture);
       }
       if (occupied.size > 0) {
-        // Random amplitude in [0.01, 0.1], shake for 3 seconds
-        const amp = 0.01 + Math.random() * 0.09;
+        // Random amplitude in [0.1, 0.15], shake for 3 seconds
+        const amp = 0.1 + Math.random() * 0.05;
         broadcast({ type: 'shake', furnitureIndices: [...occupied], duration: 3.0, amplitude: amp });
       }
       scheduleNext();
