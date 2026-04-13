@@ -544,7 +544,7 @@ function animate() {
     const fov = camera.fov / 2 * Math.PI / 180;
     const nH = (r.d / 2) / Math.tan(fov);
     const nW = (r.w / 2) / (Math.tan(fov) * camera.aspect);
-    const camY = Math.max(nH, nW) + 2;
+    const camY = Math.max(nH, nW) * 1.2 + 2; // 20% margin so corners aren't cropped
     camera.position.lerp(new THREE.Vector3(r.cx, camY, r.cz), 3 * dt);
     camera.lookAt(r.cx, 0, r.cz);
   } else if (!seekerBlind) {
