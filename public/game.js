@@ -39,25 +39,27 @@ let lastSeekerRoom = null;
 // Room detection based on position
 const roomAt = mapRoomAt;
 
-// Simple "ugh ugh" sound via Web Audio (no asset needed)
+// Ding-dong sound with distance-based volume
 let audioCtx = null;
-function playUghUgh() {
+function playDingDong(volume) {
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const now = audioCtx.currentTime;
+    // Two chime notes: E5 then C5 — classic "ding dong"
+    const notes = [659.25, 523.25];
+    const v = Math.max(0.0, Math.min(1.0, volume));
     for (let i = 0; i < 2; i++) {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      osc.type = 'sawtooth';
-      const start = now + i * 0.28;
-      osc.frequency.setValueAtTime(200, start);
-      osc.frequency.linearRampToValueAtTime(110, start + 0.18);
+      osc.type = 'triangle';
+      const start = now + i * 0.35;
+      osc.frequency.setValueAtTime(notes[i], start);
       gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(0.25, start + 0.04);
-      gain.gain.linearRampToValueAtTime(0, start + 0.22);
+      gain.gain.linearRampToValueAtTime(v * 0.5, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.55);
       osc.connect(gain).connect(audioCtx.destination);
       osc.start(start);
-      osc.stop(start + 0.24);
+      osc.stop(start + 0.65);
     }
   } catch (e) {}
 }
@@ -199,6 +201,16 @@ setOnMessage((msg) => {
       if (msg.pos) { rp.targetPos.set(msg.pos.x, 0, msg.pos.z); rp.char.group.position.copy(rp.targetPos); }
     }
     hiddenHiderFurniture.delete(msg.id);
+  }
+
+  if (msg.type === 'ding' && msg.pos) {
+    // Compute distance-based volume relative to my character's position
+    const dx = charPos.x - msg.pos.x;
+    const dz = charPos.z - msg.pos.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+    // Inverse falloff — full volume at distance 0, quieter far away, floor at 0.08
+    const volume = Math.max(0.08, 1 / (1 + dist * 0.15));
+    playDingDong(volume);
   }
 
   if (msg.type === 'shake') {
@@ -393,21 +405,6 @@ function animate() {
     if (isMoving) decayLook(dt, 6);
     resolveCollision(charPos, .4);
 
-    // Seeker: play "ugh ugh" when entering a room that has a hidden hider
-    if (role === 'seeker' && phase === 'seeking') {
-      const currentRoom = roomAt(charPos.x, charPos.z);
-      if (currentRoom !== lastSeekerRoom) {
-        lastSeekerRoom = currentRoom;
-        // Does the current room contain any hidden hider?
-        for (const fi of hiddenHiderFurniture.values()) {
-          const h = hideables[fi];
-          if (h && roomAt(h.pos.x, h.pos.z) === currentRoom) {
-            playUghUgh();
-            break;
-          }
-        }
-      }
-    }
     myChar.group.position.copy(charPos);
     myChar.group.rotation.y = charRotY;
 

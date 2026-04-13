@@ -52,6 +52,8 @@ let hideTimer = null;
 let shakeTimer = null;
 let proxShakeTimer = null;
 let seekTimer = null;
+let dingTimer = null;
+let dingRotation = 0;
 let seekCountdown = 0;
 const HIDE_TIME = 30;
 const SEEK_TIME = 120; // 2 minutes
@@ -80,6 +82,7 @@ function endGame(winner, reason) {
   if (shakeTimer) { clearTimeout(shakeTimer); shakeTimer = null; }
   if (proxShakeTimer) { clearInterval(proxShakeTimer); proxShakeTimer = null; }
   if (seekTimer) { clearInterval(seekTimer); seekTimer = null; }
+  if (dingTimer) { clearInterval(dingTimer); dingTimer = null; }
   broadcast({ type: 'gameOver', winner, reason });
   // Auto-reset to lobby after 3 seconds
   setTimeout(() => {
@@ -101,6 +104,7 @@ function resetGame() {
   if (shakeTimer) { clearTimeout(shakeTimer); shakeTimer = null; }
   if (proxShakeTimer) { clearInterval(proxShakeTimer); proxShakeTimer = null; }
   if (seekTimer) { clearInterval(seekTimer); seekTimer = null; }
+  if (dingTimer) { clearInterval(dingTimer); dingTimer = null; }
   for (const p of players.values()) {
     p.role = null; p.isHiding = false; p.hiddenFurniture = -1; p.isFound = false;
     p.pos = { x: 0, z: 2 }; p.rot = 0;
@@ -140,6 +144,20 @@ function startProxShakeTimer() {
       broadcast({ type: 'shake', furnitureIndices: [...occupied], duration: 0.3 });
     }
   }, 2000);
+}
+
+function startDingTimer() {
+  if (dingTimer) return;
+  dingRotation = 0;
+  dingTimer = setInterval(() => {
+    if (phase !== 'hiding' && phase !== 'seeking') return;
+    // Round-robin through alive hiders
+    const hiders = [...players.values()].filter(p => p.role === 'hider' && !p.isFound);
+    if (hiders.length === 0) return;
+    const hider = hiders[dingRotation % hiders.length];
+    dingRotation++;
+    broadcast({ type: 'ding', pos: hider.pos });
+  }, 20000);
 }
 
 function startShakeTimer() {
@@ -194,6 +212,7 @@ function startGame(opts = {}) {
     broadcastPlayers();
     broadcast({ type: 'phaseChange', phase: 'hiding', hideCountdown, seekerChances });
     startShakeTimer();
+    startDingTimer();
     hideTimer = setInterval(() => {
       hideCountdown--;
       broadcast({ type: 'countdown', hideCountdown });
