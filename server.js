@@ -156,11 +156,15 @@ function startShakeTimer() {
   }, SHAKE_INTERVAL);
 }
 
-function startGame() {
-  if (players.size < 2) return;
-  // Pick a random seeker
+function startGame(opts = {}) {
+  if (players.size < 1) return;
+  const soloMode = players.size === 1;
+  if (soloMode && !opts.soloRole) return; // solo only allowed in debug
+  // Pick a random seeker (or force role in solo debug)
   const ids = [...players.keys()];
-  const seekerId = ids[Math.floor(Math.random() * ids.length)];
+  const seekerId = soloMode
+    ? (opts.soloRole === 'seeker' ? ids[0] : -1)
+    : ids[Math.floor(Math.random() * ids.length)];
   for (const p of players.values()) {
     p.role = (p.id === seekerId) ? 'seeker' : 'hider';
     p.isHiding = false; p.hiddenFurniture = -1; p.isFound = false;
@@ -253,9 +257,14 @@ wss.on('connection', (ws) => {
     }
     if (msg.type === 'ready' && phase === 'lobby') {
       player.ready = !player.ready;
+      player.debug = !!msg.debug;
+      player.debugRole = msg.debugRole === 'hider' ? 'hider' : 'seeker';
       broadcastPlayers();
       const all = [...players.values()];
-      if (all.length >= 2 && all.every(p => p.ready)) {
+      // Debug: allow a single ready player to start solo
+      if (all.length === 1 && all[0].ready && all[0].debug) {
+        startGame({ soloRole: all[0].debugRole });
+      } else if (all.length >= 2 && all.every(p => p.ready)) {
         startGame();
       }
     }

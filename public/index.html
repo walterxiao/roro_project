@@ -162,7 +162,8 @@
         return p.name + (p.id === myId ? ' (you)' : '') + tag;
       }).join('<br>');
       if (!inGameBlocked) {
-        startBtn.disabled = list.length < 2;
+        const minPlayers = (new URLSearchParams(window.location.search).get('debug') === 'true') ? 1 : 2;
+        startBtn.disabled = list.length < minPlayers;
         if (me && me.ready) {
           startBtn.textContent = 'Waiting for others...';
           startBtn.style.background = '#555';
@@ -257,7 +258,18 @@
       sessionStorage.setItem('roroName', n);
       wsSend({ type: 'setName', name: n });
     });
-    startBtn.addEventListener('click', () => wsSend({ type: 'ready' }));
+    // Parse debug mode from query string (?debug=true&role=seeker|hider)
+    const urlParams = new URLSearchParams(window.location.search);
+    const debugMode = urlParams.get('debug') === 'true';
+    const debugRole = urlParams.get('role') === 'hider' ? 'hider' : 'seeker';
+    if (debugMode) {
+      statusDiv.textContent = 'DEBUG MODE — solo play as ' + debugRole;
+      statusDiv.style.color = '#f80';
+    }
+
+    startBtn.addEventListener('click', () => {
+      wsSend({ type: 'ready', debug: debugMode, debugRole });
+    });
 
     const mapHomeBtn = document.getElementById('mapHome');
     const mapLibraryBtn = document.getElementById('mapLibrary');
