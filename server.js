@@ -55,7 +55,7 @@ let seekTimer = null;
 let seekCountdown = 0;
 const HIDE_TIME = 30;
 const SEEK_TIME = 120; // 2 minutes
-const SHAKE_INTERVAL = 30000; // ms
+const SHAKE_INTERVAL = 15000; // ms (every 15s)
 
 function broadcast(msg, excludeId) {
   const data = JSON.stringify(msg);
@@ -151,7 +151,7 @@ function startShakeTimer() {
       if (p.role === 'hider' && p.isHiding && !p.isFound) occupied.add(p.hiddenFurniture);
     }
     if (occupied.size > 0) {
-      broadcast({ type: 'shake', furnitureIndices: [...occupied] });
+      broadcast({ type: 'shake', furnitureIndices: [...occupied], duration: 1.0, amplitude: 0.12 });
     }
   }, SHAKE_INTERVAL);
 }
