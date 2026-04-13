@@ -27,6 +27,19 @@
     #hubLink { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); color:#aaa; font-size:14px; text-decoration:none; padding:8px 14px; border:1px solid #444; border-radius:8px; background:rgba(0,0,0,0.3); }
     #hubLink:hover { color:#fff; border-color:#888; }
 
+    #browser, #inGame { display:flex; flex-direction:column; align-items:center; gap:14px; }
+    .big-btn { padding:14px 30px; font-size:18px; font-weight:700; border:none; border-radius:10px; background:#2a7; color:#fff; cursor:pointer; }
+    .secondary-btn { padding:10px 24px; font-size:14px; font-weight:600; border:1px solid #844; border-radius:8px; background:#400; color:#fcc; cursor:pointer; }
+    .secondary-btn:hover { background:#600; }
+    #browserLabel { color:#aaa; font-size:13px; margin-top:8px; }
+    #gameList { display:flex; flex-direction:column; gap:8px; width:300px; min-height:60px; }
+    .game-card { padding:12px 16px; background:#222; border:1px solid #444; border-radius:8px; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    .game-card .info { color:#ccc; font-size:14px; line-height:1.4; text-align:left; }
+    .game-card .info .sub { color:#888; font-size:12px; }
+    .game-card button { padding:8px 14px; font-size:14px; border:none; border-radius:6px; background:#2a7; color:#fff; cursor:pointer; }
+    #gameList .empty { color:#666; font-size:13px; padding:10px; text-align:center; }
+    #gameHeader { color:#aaa; font-size:13px; text-align:center; line-height:1.5; }
+
     /* Game (hidden until started) */
     #gameWrap { display:none; width:100%; height:100%; position:fixed; inset:0; }
     #gameWrap.active { display:block; }
@@ -39,18 +52,29 @@
   <div id="lobby">
     <h1>RoRo Hide &amp; Seek</h1>
     <h2>Multiplayer</h2>
-    <div id="inGameNotice" style="display:none; color:#f80; font-size:16px; text-align:center; padding:20px; border:2px solid #f80; border-radius:12px;">
-      Game in progress.<br>Please wait for it to end.
-    </div>
     <input type="text" id="nameInput" placeholder="Enter your name" maxlength="16">
-    <div id="mapSelector" style="display:flex; gap:10px; align-items:center;">
-      <span style="color:#aaa; font-size:14px;">Map:</span>
-      <button class="map-btn" id="mapHome" data-map="home">Home</button>
-      <button class="map-btn" id="mapLibrary" data-map="library">Library</button>
+
+    <!-- Browser view: list of games + create button -->
+    <div id="browser">
+      <button id="createGameBtn" class="big-btn">Create a new game</button>
+      <div id="browserLabel">Or join an existing game:</div>
+      <div id="gameList"></div>
     </div>
-    <div id="mapInfo" style="color:#aaa; font-size:13px;"></div>
-    <div id="players"></div>
-    <button id="startBtn" disabled>I am ready</button>
+
+    <!-- In-game lobby view -->
+    <div id="inGame" style="display:none;">
+      <div id="gameHeader"></div>
+      <div id="mapSelector" style="display:flex; gap:10px; align-items:center;">
+        <span style="color:#aaa; font-size:14px;">Map:</span>
+        <button class="map-btn" id="mapHome" data-map="home">Home</button>
+        <button class="map-btn" id="mapLibrary" data-map="library">Library</button>
+      </div>
+      <div id="mapInfo" style="color:#aaa; font-size:13px;"></div>
+      <div id="players"></div>
+      <button id="startBtn" disabled>I am ready</button>
+      <button id="leaveGameBtn" class="secondary-btn">Leave game</button>
+    </div>
+
     <div id="status"></div>
     <a id="hubLink" href="http://xiaogamehub.com">&larr; Back to GameHub</a>
   </div>
@@ -86,21 +110,53 @@
     const wheelOverlay = document.getElementById('wheelOverlay');
     const wheelName = document.getElementById('wheelName');
     const wheelResult = document.getElementById('wheelResult');
+    const browserDiv = document.getElementById('browser');
+    const inGameDiv = document.getElementById('inGame');
+    const gameListDiv = document.getElementById('gameList');
+    const gameHeader = document.getElementById('gameHeader');
+    const createGameBtn = document.getElementById('createGameBtn');
+    const leaveGameBtn = document.getElementById('leaveGameBtn');
 
     let ws, myId = null, myRole = null, gameStarted = false;
     let currentPlayers = [];
     let currentMap = 'home';
     let hostId = null;
+    let myGameId = null;
 
-    // Restore name from previous session
+    // Restore name
     const savedName = sessionStorage.getItem('roroName');
     if (savedName) nameInput.value = savedName;
 
     function wsSend(msg) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg)); }
 
-    // Expose ws + role + players for game modules
     window.__roro = { getWs: () => ws, getId: () => myId, getRole: () => myRole, getPlayers: () => currentPlayers, getMap: () => currentMap, send: wsSend };
-    window.__roroBuffer = []; // messages queued while game module loads
+    window.__roroBuffer = [];
+
+    function showBrowser() {
+      browserDiv.style.display = 'flex';
+      inGameDiv.style.display = 'none';
+    }
+    function showInGame() {
+      browserDiv.style.display = 'none';
+      inGameDiv.style.display = 'flex';
+    }
+
+    function renderGameList(list) {
+      if (!list.length) { gameListDiv.innerHTML = '<div class="empty">No games yet. Create one!</div>'; return; }
+      gameListDiv.innerHTML = list.map(g => `
+        <div class="game-card">
+          <div class="info">
+            <div>${escapeHtml(g.hostName)}'s game</div>
+            <div class="sub">${g.playerCount} player${g.playerCount !== 1 ? 's' : ''} · ${g.map}</div>
+          </div>
+          <button data-gid="${g.id}">Join</button>
+        </div>
+      `).join('');
+      gameListDiv.querySelectorAll('button[data-gid]').forEach(btn => {
+        btn.addEventListener('click', () => wsSend({ type: 'joinGame', gameId: btn.getAttribute('data-gid') }));
+      });
+    }
+    function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
     function connect() {
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -114,11 +170,31 @@
         const msg = JSON.parse(e.data);
         if (msg.type === 'welcome') {
           myId = msg.id;
-          if (msg.map) currentMap = msg.map;
-          if (msg.hostId != null) hostId = msg.hostId;
-          updatePlayers(msg.players);
-          updateLobbyForPhase(msg.phase);
+          renderGameList(msg.games || []);
+          showBrowser();
+        }
+        if (msg.type === 'gameList') {
+          renderGameList(msg.games || []);
+        }
+        if (msg.type === 'gameJoined') {
+          myGameId = msg.game.id;
+          hostId = msg.game.hostId;
+          currentMap = msg.game.map;
+          updatePlayers(msg.game.players);
+          gameHeader.textContent = `Game ${msg.game.id}`;
+          showInGame();
           updateMapUI();
+        }
+        if (msg.type === 'gameLeft') {
+          myGameId = null;
+          myRole = null;
+          hostId = null;
+          currentPlayers = [];
+          showBrowser();
+        }
+        if (msg.type === 'joinFailed') {
+          statusDiv.textContent = msg.reason || 'Failed to join';
+          setTimeout(() => { statusDiv.textContent = ''; }, 3000);
         }
         if (msg.type === 'allPlayers') {
           if (msg.hostId != null) hostId = msg.hostId;
@@ -132,23 +208,12 @@
         if (msg.type === 'wheelSpin') startWheel(msg.players, msg.seekerId, msg.duration);
         if (msg.type === 'phaseChange') {
           if (msg.phase === 'hiding' && !gameStarted) {
-            // Everyone present gets a role auto-assigned, so always launch the game
             const meInList = currentPlayers.some(p => p.id === myId && p.role);
             if (meInList) launchGame();
-            else updateLobbyForPhase('hiding');
-          } else {
-            updateLobbyForPhase(msg.phase);
           }
         }
-        if (msg.type === 'gameOver') {
-          updateLobbyForPhase('gameover');
-        }
-        if (msg.type === 'reset') {
-          // Fully reload to guarantee clean state — name is restored from sessionStorage
-          window.location.reload();
-          return;
-        }
-        // Forward to game module (or buffer if not loaded yet)
+        if (msg.type === 'reset') { window.location.reload(); return; }
+
         if (window.__roroOnMsg) window.__roroOnMsg(msg);
         else window.__roroBuffer.push(msg);
       };
@@ -163,30 +228,18 @@
         if (p.id === myId && p.role) myRole = p.role;
         if (p.id === myId) me = p;
         const tag = p.ready ? ' ✓' : '';
-        return p.name + (p.id === myId ? ' (you)' : '') + tag;
+        const host = p.id === hostId ? ' (host)' : '';
+        return p.name + (p.id === myId ? ' (you)' : '') + host + tag;
       }).join('<br>');
-      if (!inGameBlocked) {
-        const minPlayers = (new URLSearchParams(window.location.search).get('debug') === 'true') ? 1 : 2;
-        startBtn.disabled = list.length < minPlayers;
-        if (me && me.ready) {
-          startBtn.textContent = 'Waiting for others...';
-          startBtn.style.background = '#555';
-        } else {
-          startBtn.textContent = 'I am ready';
-          startBtn.style.background = '#2a7';
-        }
+      const minPlayers = (new URLSearchParams(window.location.search).get('debug') === 'true') ? 1 : 2;
+      startBtn.disabled = list.length < minPlayers;
+      if (me && me.ready) {
+        startBtn.textContent = 'Waiting for others...';
+        startBtn.style.background = '#555';
+      } else {
+        startBtn.textContent = 'I am ready';
+        startBtn.style.background = '#2a7';
       }
-    }
-
-    let inGameBlocked = false;
-    const inGameNotice = document.getElementById('inGameNotice');
-    function updateLobbyForPhase(ph) {
-      const inGame = (ph === 'hiding' || ph === 'seeking');
-      inGameBlocked = inGame;
-      inGameNotice.style.display = inGame ? 'block' : 'none';
-      nameInput.style.display = inGame ? 'none' : 'block';
-      startBtn.style.display = inGame ? 'none' : 'inline-block';
-      if (inGame) startBtn.disabled = true;
     }
 
     function startWheel(players, seekerId, duration) {
@@ -274,6 +327,8 @@
     startBtn.addEventListener('click', () => {
       wsSend({ type: 'ready', debug: debugMode, debugRole });
     });
+    createGameBtn.addEventListener('click', () => wsSend({ type: 'createGame' }));
+    leaveGameBtn.addEventListener('click', () => wsSend({ type: 'leaveGame' }));
 
     const mapHomeBtn = document.getElementById('mapHome');
     const mapLibraryBtn = document.getElementById('mapLibrary');
