@@ -208,12 +208,12 @@ setOnMessage((msg) => {
   if (msg.type === 'ding' && msg.pos) {
     // Only seekers hear the ding-dong
     if (getMyRole() !== 'seeker') return;
-    // Compute distance-based volume relative to my character's position
     const dx = charPos.x - msg.pos.x;
     const dz = charPos.z - msg.pos.z;
     const dist = Math.sqrt(dx * dx + dz * dz);
-    // Inverse falloff — full volume at distance 0, quieter far away, floor at 0.08
-    const volume = Math.max(0.08, 1 / (1 + dist * 0.15));
+    // Inverse-square falloff: loud in the same room, soft hint from afar
+    // dist 0 → 1.0,  dist 5 → .57,  dist 10 → .25,  dist 15 → .13,  dist 25+ → floor .04
+    const volume = Math.max(0.04, 1 / (1 + dist * dist * 0.03));
     playDingDong(volume);
   }
 
