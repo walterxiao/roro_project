@@ -53,7 +53,6 @@ let shakeTimer = null;
 let proxShakeTimer = null;
 let seekTimer = null;
 let dingTimer = null;
-let dingRotation = 0;
 let seekCountdown = 0;
 const HIDE_TIME = 30;
 const SEEK_TIME = 120; // 2 minutes
@@ -148,15 +147,16 @@ function startProxShakeTimer() {
 
 function startDingTimer() {
   if (dingTimer) return;
-  dingRotation = 0;
   dingTimer = setInterval(() => {
-    if (phase !== 'hiding' && phase !== 'seeking') return;
-    // Round-robin through alive hiders
+    if (phase !== 'seeking') return;
     const hiders = [...players.values()].filter(p => p.role === 'hider' && !p.isFound);
-    if (hiders.length === 0) return;
-    const hider = hiders[dingRotation % hiders.length];
-    dingRotation++;
-    broadcast({ type: 'ding', pos: hider.pos });
+    // Each round: ding every hider in sequence with a 0.5s gap
+    hiders.forEach((hider, i) => {
+      setTimeout(() => {
+        if (phase !== 'seeking' || hider.isFound) return;
+        broadcast({ type: 'ding', pos: hider.pos });
+      }, i * 500);
+    });
   }, 20000);
 }
 
@@ -212,7 +212,6 @@ function startGame(opts = {}) {
     broadcastPlayers();
     broadcast({ type: 'phaseChange', phase: 'hiding', hideCountdown, seekerChances });
     startShakeTimer();
-    startDingTimer();
     hideTimer = setInterval(() => {
       hideCountdown--;
       broadcast({ type: 'countdown', hideCountdown });
@@ -222,6 +221,7 @@ function startGame(opts = {}) {
         seekCountdown = SEEK_TIME;
         broadcast({ type: 'phaseChange', phase: 'seeking', seekerChances, seekCountdown });
         startProxShakeTimer();
+        startDingTimer();
         seekTimer = setInterval(() => {
           seekCountdown--;
           broadcast({ type: 'seekCountdown', seekCountdown });
