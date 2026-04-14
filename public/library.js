@@ -450,10 +450,11 @@ function birdsEyeRoom(x, z) {
   return { cx: 0, cz: 0, w: LIB_W, d: LIB_D };
 }
 
+function getFloorY(x, z) { return 0; }
 export {
   LIB_W as ROOM_W, LIB_D as ROOM_D, LIB_H as ROOM_H,
   walls, hideables, hideableBounds, colliders, fireParts, tvGlow,
-  spawnPoints, roomAt, birdsEyeRoom
+  spawnPoints, roomAt, birdsEyeRoom, getFloorY
 };
 // Provide DINING_W for game.js compatibility (not used in library)
 export const DINING_W = 0;

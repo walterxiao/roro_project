@@ -9,7 +9,8 @@ const mapFile = mapName === 'library' ? './library.js'
               : mapName === 'cruise'  ? './cruise.js'
               : './room.js';
 const mapMod = await import(mapFile);
-const { ROOM_W, ROOM_D, ROOM_H, DINING_W, walls, hideables, hideableBounds, colliders, fireParts, tvGlow, roomAt: mapRoomAt, birdsEyeRoom } = mapMod;
+const { ROOM_W, ROOM_D, ROOM_H, DINING_W, walls, hideables, hideableBounds, colliders, fireParts, tvGlow, roomAt: mapRoomAt, birdsEyeRoom, getFloorY: mapGetFloorY } = mapMod;
+const getFloorY = mapGetFloorY || ((x, z) => 0);
 
 // ========== STATE ==========
 const MOVE_SPEED = 4, TURN_SPEED = 3, HIDE_RANGE = 2.5, CATCH_RANGE = 1.5;
@@ -447,6 +448,9 @@ function animate() {
     if (isMoving) decayLook(dt, 6);
     resolveCollision(charPos, .4);
 
+    // Apply floor height (handles multi-story maps like the cruise ship)
+    charPos.y = getFloorY(charPos.x, charPos.z);
+
     myChar.group.position.copy(charPos);
     myChar.group.rotation.y = charRotY;
 
@@ -544,12 +548,13 @@ function animate() {
   // --- CAMERA ---
   if (isHiding && hiddenIn) {
     const r = birdsEyeRoom(hiddenIn.pos.x, hiddenIn.pos.z);
+    const floorY = r.y || 0;
     const fov = camera.fov / 2 * Math.PI / 180;
     const nH = (r.d / 2) / Math.tan(fov);
     const nW = (r.w / 2) / (Math.tan(fov) * camera.aspect);
-    const camY = Math.max(nH, nW) * 1.2 + 2; // 20% margin so corners aren't cropped
+    const camY = floorY + Math.max(nH, nW) * 1.2 + 2;
     camera.position.lerp(new THREE.Vector3(r.cx, camY, r.cz), 3 * dt);
-    camera.lookAt(r.cx, 0, r.cz);
+    camera.lookAt(r.cx, floorY, r.cz);
   } else if (!seekerBlind) {
     const cd = 6, ch = 3.5;
     const look = getLook();
@@ -579,6 +584,7 @@ function animate() {
   // --- REMOTE PLAYERS ---
   for (const [id, rp] of remotePlayers) {
     rp.char.group.position.lerp(rp.targetPos, 8 * dt);
+    rp.char.group.position.y = getFloorY(rp.char.group.position.x, rp.char.group.position.z);
     const diff = rp.targetRot - rp.char.group.rotation.y;
     rp.char.group.rotation.y += diff * 8 * dt;
     const moving = rp.char.group.position.distanceTo(rp.targetPos) > .05;

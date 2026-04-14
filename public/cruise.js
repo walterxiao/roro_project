@@ -26,9 +26,10 @@ const railingMat = mat(0xffffff);
 const walls = [];
 
 // ========== FLOORS ==========
-// Pool deck floor (outdoor)
+// Pool deck floor (outdoor, elevated to y=4)
+const DECK_Y = 4;
 const deckFloor = new THREE.Mesh(new THREE.BoxGeometry(SHIP_W, 0.2, DECK_D), deckMat);
-deckFloor.position.set(0, -0.1, DECK_Z);
+deckFloor.position.set(0, DECK_Y - 0.1, DECK_Z);
 deckFloor.receiveShadow = true; scene.add(deckFloor);
 
 // Stair area floor (visual stairs)
@@ -72,11 +73,10 @@ addWall(0.2, SHIP_H, 9, 0, SHIP_H / 2, 4.5);
 addWall(0.2, SHIP_H, 9, 0, SHIP_H / 2, 15.5);
 addWall(0.2, 0.6, 2, 0, SHIP_H - 0.3, 10);
 
-// Wall between stair area and pool deck (with a wide doorway)
-// Doorway x = -4 to x = 4 open, solid outside
-addWall(11, SHIP_H, 0.2, -9.5, SHIP_H / 2, -4);
-addWall(11, SHIP_H, 0.2, 9.5, SHIP_H / 2, -4);
-addWall(8, 0.6, 0.2, 0, SHIP_H - 0.3, -4);
+// Wall between lower floor and pool deck area (z=-4)
+// Goes from y=0 to y=5 (full indoor height plus deck railing). Doorway x=-4 to 4 open.
+addWall(11, 5, 0.2, -9.5, 2.5, -4);
+addWall(11, 5, 0.2, 9.5, 2.5, -4);
 
 // Pool deck low railings (white pipe style) on 3 sides
 const RAIL_H = 1.0;
@@ -85,21 +85,34 @@ function addRailing(w, d, x, z) {
   m.position.set(x, RAIL_H / 2, z); m.castShadow = true;
   scene.add(m);
 }
-addRailing(SHIP_W, 0.15, 0, -28);       // back of deck
-addRailing(0.15, DECK_D, -15, DECK_Z);  // left of deck
-addRailing(0.15, DECK_D, 15, DECK_Z);   // right of deck
-
-// ========== STAIR VISUAL (decorative steps in the passage) ==========
-const stairStepMat = mat(0xaa8866);
-for (let i = 0; i < 4; i++) {
-  const step = new THREE.Mesh(new THREE.BoxGeometry(6, 0.1, 0.6), stairStepMat);
-  step.position.set(0, 0.05 + i * 0.02, -3.5 + i * 0.6);
-  step.castShadow = true; scene.add(step);
+// Pool deck railings (at deck height y=DECK_Y+0.5)
+function addRailingY(w, d, x, z) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, RAIL_H, d), railingMat);
+  m.position.set(x, DECK_Y + RAIL_H / 2, z); m.castShadow = true;
+  scene.add(m);
 }
-const railL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 2.5), stairStepMat);
-railL.position.set(-3, 0.35, -2.3); scene.add(railL);
-const railR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 2.5), stairStepMat);
-railR.position.set(3, 0.35, -2.3); scene.add(railR);
+addRailingY(SHIP_W, 0.15, 0, -28);           // back of deck
+addRailingY(0.15, DECK_D, -15, DECK_Z);      // left of deck
+addRailingY(0.15, DECK_D, 15, DECK_Z);       // right of deck
+// South railing of deck — split for stair opening (x=-4 to 4)
+addRailingY(11, 0.15, -9.5, -4);
+addRailingY(11, 0.15, 9.5, -4);
+
+// ========== STAIRCASE (real climbing steps from y=0 at z=0 to y=4 at z=-4) ==========
+const stairStepMat = mat(0xaa8866);
+// 8 steps, each 0.5m deep and rising in y. Each step is a block from y=0 up to (i+1)*0.5.
+for (let i = 0; i < 8; i++) {
+  const h = (i + 1) * 0.5;
+  const step = new THREE.Mesh(new THREE.BoxGeometry(8, h, 0.5), stairStepMat);
+  step.position.set(0, h / 2, -0.25 - i * 0.5);
+  step.castShadow = true; step.receiveShadow = true;
+  scene.add(step);
+}
+// Staircase hand rails (sloped)
+const stairRailL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.2, 5.7), stairStepMat);
+stairRailL.position.set(-3.9, 2.3, -2); stairRailL.rotation.x = Math.atan2(4, 4); scene.add(stairRailL);
+const stairRailR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.2, 5.7), stairStepMat);
+stairRailR.position.set(3.9, 2.3, -2); stairRailR.rotation.x = Math.atan2(4, 4); scene.add(stairRailR);
 
 // ========== LIGHTING ==========
 const sun = new THREE.AmbientLight(0xffffff, 0.55); scene.add(sun);
@@ -116,7 +129,7 @@ poolRim.position.y = 0.15; poolRim.castShadow = true; pool.add(poolRim);
 const poolWater = new THREE.Mesh(new THREE.BoxGeometry(8.4, 0.3, 4.9),
   new THREE.MeshStandardMaterial({ color: 0x3899dd, transparent: true, opacity: 0.7, emissive: 0x225588, emissiveIntensity: 0.15 }));
 poolWater.position.y = 0.16; pool.add(poolWater);
-pool.position.set(0, 0, -20);
+pool.position.set(0, DECK_Y, -20);
 scene.add(pool);
 
 // Hot tub — round with warm water
@@ -132,7 +145,7 @@ for (let i = 0; i < 4; i++) {
   s.position.set((Math.random() - 0.5) * 1.5, 0.9 + Math.random() * 0.3, (Math.random() - 0.5) * 1.5);
   hotTub.add(s);
 }
-hotTub.position.set(10, 0, -10);
+hotTub.position.set(10, DECK_Y, -10);
 scene.add(hotTub);
 
 // Water slide — tilted slide structure
@@ -149,7 +162,7 @@ slideTower.position.set(0, 1.75, 1.7); slideTower.castShadow = true; slide.add(s
 // Ladder
 const slideLadder = new THREE.Mesh(new THREE.BoxGeometry(0.8, 3, 0.1), mat(0x888888));
 slideLadder.position.set(0, 1.5, 2.4); slide.add(slideLadder);
-slide.position.set(-11, 0, -23);
+slide.position.set(-11, DECK_Y, -23);
 scene.add(slide);
 
 // Beach chairs (loungers)
@@ -175,10 +188,15 @@ function makeBeachChair(cx, cz, rot = 0) {
   scene.add(g);
   return g;
 }
-const chair1 = makeBeachChair(-7, -13);
-const chair2 = makeBeachChair(-3, -13);
-const chair3 = makeBeachChair(4, -13);
-const chair4 = makeBeachChair(8, -13);
+function placeBeachChair(cx, cz) {
+  const g = makeBeachChair(cx, cz);
+  g.position.y = DECK_Y;
+  return g;
+}
+const chair1 = placeBeachChair(-7, -13);
+const chair2 = placeBeachChair(-3, -13);
+const chair3 = placeBeachChair(4, -13);
+const chair4 = placeBeachChair(8, -13);
 
 // Outdoor lounge — couch + coffee table
 const lounge = new THREE.Group();
@@ -190,7 +208,7 @@ const loungeTable = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.15, 
 loungeTable.position.set(0, 0.45, 1.3); loungeTable.castShadow = true; lounge.add(loungeTable);
 const loungeTableLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.4, 8), mat(0xaaaaaa));
 loungeTableLeg.position.set(0, 0.2, 1.3); lounge.add(loungeTableLeg);
-lounge.position.set(-8, 0, -8);
+lounge.position.set(-8, DECK_Y, -8);
 scene.add(lounge);
 
 // ========== RESTAURANT (lower floor, left half) ==========
@@ -351,13 +369,16 @@ const colliders = [
   // Middle splitter (restaurant vs game room) — split around z=9 to 11 doorway
   { min: new THREE.Vector3(-0.1, 0, 0), max: new THREE.Vector3(0.1, SHIP_H, 9) },
   { min: new THREE.Vector3(-0.1, 0, 11), max: new THREE.Vector3(0.1, SHIP_H, 20) },
-  // Wall between stair and pool deck — opening x=-4 to x=4
-  { min: new THREE.Vector3(-15, 0, -4 - 0.1), max: new THREE.Vector3(-4, SHIP_H, -4 + 0.1) },
-  { min: new THREE.Vector3(4, 0, -4 - 0.1), max: new THREE.Vector3(15, SHIP_H, -4 + 0.1) },
-  // Pool deck railings
-  { min: new THREE.Vector3(-15, 0, -28 - 0.1), max: new THREE.Vector3(15, RAIL_H, -28 + 0.1) },
-  { min: new THREE.Vector3(-15 - 0.1, 0, -28), max: new THREE.Vector3(-15 + 0.1, RAIL_H, -4) },
-  { min: new THREE.Vector3(15 - 0.1, 0, -28), max: new THREE.Vector3(15 + 0.1, RAIL_H, -4) },
+  // Wall between stair passage and pool deck — full height, opening x=-4 to x=4
+  { min: new THREE.Vector3(-15, 0, -4 - 0.1), max: new THREE.Vector3(-4, 5, -4 + 0.1) },
+  { min: new THREE.Vector3(4, 0, -4 - 0.1), max: new THREE.Vector3(15, 5, -4 + 0.1) },
+  // Pool deck railings (y=DECK_Y to DECK_Y+RAIL_H)
+  { min: new THREE.Vector3(-15, DECK_Y, -28 - 0.1), max: new THREE.Vector3(15, DECK_Y + RAIL_H, -28 + 0.1) },
+  { min: new THREE.Vector3(-15 - 0.1, DECK_Y, -28), max: new THREE.Vector3(-15 + 0.1, DECK_Y + RAIL_H, -4) },
+  { min: new THREE.Vector3(15 - 0.1, DECK_Y, -28), max: new THREE.Vector3(15 + 0.1, DECK_Y + RAIL_H, -4) },
+  // Pool deck south railings (around the stair opening)
+  { min: new THREE.Vector3(-15, DECK_Y, -4 - 0.1), max: new THREE.Vector3(-4, DECK_Y + RAIL_H, -4 + 0.1) },
+  { min: new THREE.Vector3(4, DECK_Y, -4 - 0.1), max: new THREE.Vector3(15, DECK_Y + RAIL_H, -4 + 0.1) },
 ];
 // Furniture colliders from bounding boxes
 for (const b of hideableBounds) {
@@ -375,12 +396,21 @@ function roomAt(x, z) {
   return 'game-room';
 }
 
+// Floor height as a function of position — upper deck at y=DECK_Y, lower at 0,
+// stairs interpolate linearly.
+function getFloorY(x, z) {
+  if (z <= -4) return DECK_Y;
+  if (z >= 0) return 0;
+  return -z * (DECK_Y / 4);
+}
+
 function birdsEyeRoom(x, z) {
   const r = roomAt(x, z);
-  if (r === 'pool-deck') return { cx: 0, cz: DECK_Z, w: SHIP_W, d: DECK_D };
-  if (r === 'stairs') return { cx: 0, cz: -2, w: SHIP_W, d: STAIR_D + 4 };
-  if (r === 'restaurant') return { cx: -7.5, cz: ROOMS_Z, w: 15, d: ROOMS_D };
-  return { cx: 7.5, cz: ROOMS_Z, w: 15, d: ROOMS_D };
+  const y = getFloorY(x, z);
+  if (r === 'pool-deck') return { cx: 0, cz: DECK_Z, w: SHIP_W, d: DECK_D, y };
+  if (r === 'stairs') return { cx: 0, cz: -2, w: SHIP_W, d: STAIR_D + 4, y };
+  if (r === 'restaurant') return { cx: -7.5, cz: ROOMS_Z, w: 15, d: ROOMS_D, y };
+  return { cx: 7.5, cz: ROOMS_Z, w: 15, d: ROOMS_D, y };
 }
 
 // ========== SPAWN POINTS ==========
@@ -405,5 +435,5 @@ export {
   ROOM_W, ROOM_D, ROOM_H, DINING_W,
   walls, hideables, hideableBounds, colliders,
   fireParts, tvGlow,
-  spawnPoints, roomAt, birdsEyeRoom,
+  spawnPoints, roomAt, birdsEyeRoom, getFloorY,
 };

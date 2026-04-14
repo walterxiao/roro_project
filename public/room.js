@@ -662,4 +662,5 @@ function birdsEyeRoom(x, z) {
   return { cx: 0, cz: 0, w: ROOM_W, d: ROOM_D };
 }
 
-export { ROOM_W, ROOM_D, ROOM_H, DINING_W, walls, hideables, hideableBounds, colliders, fireParts, tvGlow, spawnPoints, roomAt, birdsEyeRoom };
+function getFloorY(x, z) { return 0; }
+export { ROOM_W, ROOM_D, ROOM_H, DINING_W, walls, hideables, hideableBounds, colliders, fireParts, tvGlow, spawnPoints, roomAt, birdsEyeRoom, getFloorY };
