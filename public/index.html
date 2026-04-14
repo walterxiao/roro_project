@@ -319,7 +319,7 @@
     // Parse debug mode from query string (?debug=true&role=seeker|hider)
     const urlParams = new URLSearchParams(window.location.search);
     const debugMode = urlParams.get('debug') === 'true';
-    const debugRole = urlParams.get('role') === 'hider' ? 'hider' : 'seeker';
+    const debugRole = urlParams.get('role') === 'seeker' ? 'seeker' : 'hider';
     if (debugMode) {
       statusDiv.textContent = 'DEBUG MODE — solo play as ' + debugRole;
       statusDiv.style.color = '#f80';
