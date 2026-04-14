@@ -68,6 +68,7 @@
         <span style="color:#aaa; font-size:14px;">Map:</span>
         <button class="map-btn" id="mapHome" data-map="home">Home</button>
         <button class="map-btn" id="mapLibrary" data-map="library">Library</button>
+        <button class="map-btn" id="mapCruise" data-map="cruise">Cruise</button>
       </div>
       <div id="mapInfo" style="color:#aaa; font-size:13px;"></div>
       <div id="players"></div>
@@ -332,17 +333,21 @@
 
     const mapHomeBtn = document.getElementById('mapHome');
     const mapLibraryBtn = document.getElementById('mapLibrary');
+    const mapCruiseBtn = document.getElementById('mapCruise');
     const mapInfo = document.getElementById('mapInfo');
     function updateMapUI() {
       mapHomeBtn.classList.toggle('active', currentMap === 'home');
       mapLibraryBtn.classList.toggle('active', currentMap === 'library');
+      mapCruiseBtn.classList.toggle('active', currentMap === 'cruise');
       const isHost = hostId === myId;
       mapHomeBtn.disabled = !isHost;
       mapLibraryBtn.disabled = !isHost;
+      mapCruiseBtn.disabled = !isHost;
       mapInfo.textContent = isHost ? '(You choose the map)' : 'Host picks the map';
     }
     mapHomeBtn.addEventListener('click', () => { if (hostId === myId) wsSend({ type: 'setMap', map: 'home' }); });
     mapLibraryBtn.addEventListener('click', () => { if (hostId === myId) wsSend({ type: 'setMap', map: 'library' }); });
+    mapCruiseBtn.addEventListener('click', () => { if (hostId === myId) wsSend({ type: 'setMap', map: 'cruise' }); });
 
     connect();
   </script>

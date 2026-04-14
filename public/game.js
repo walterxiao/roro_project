@@ -5,7 +5,9 @@ import { send, getMyId, getMyRole, setOnMessage, showToast } from './network.js'
 
 // Dynamically load the chosen map
 const mapName = window.__roro?.getMap?.() || 'home';
-const mapFile = mapName === 'library' ? './library.js' : './room.js';
+const mapFile = mapName === 'library' ? './library.js'
+              : mapName === 'cruise'  ? './cruise.js'
+              : './room.js';
 const mapMod = await import(mapFile);
 const { ROOM_W, ROOM_D, ROOM_H, DINING_W, walls, hideables, hideableBounds, colliders, fireParts, tvGlow, roomAt: mapRoomAt, birdsEyeRoom } = mapMod;
 
