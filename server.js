@@ -26,6 +26,11 @@ const games = new Map();   // gameId -> game
 
 const HIDE_TIME = 30;
 const SEEK_TIME = 120;
+const SEEK_TIME_BY_MAP = {
+  home: 120,
+  library: 120,
+  cruise: 180,
+};
 
 const SPAWNS_BY_MAP = {
   home: [
@@ -39,6 +44,19 @@ const SPAWNS_BY_MAP = {
     { x: -6, z: 1 }, { x: 1, z: 1 }, { x: -6, z: 5 }, { x: 1, z: 5 },
     { x: 10, z: -9 }, { x: 10, z: 5 }, { x: -10, z: 5 }, { x: 10, z: 0 },
     { x: 17, z: -5 }, { x: 24, z: 4 }, { x: 21, z: 0 },
+  ],
+  cruise: [
+    // Pool deck (upper area, z negative)
+    { x: -10, z: -22 }, { x: 0, z: -20 }, { x: 10, z: -22 },
+    { x: -8, z: -15 }, { x: 8, z: -15 }, { x: 0, z: -10 },
+    { x: -12, z: -8 }, { x: 12, z: -8 },
+    // Lower indoor (z positive)
+    // Restaurant (left half)
+    { x: -10, z: 5 }, { x: -5, z: 10 }, { x: -10, z: 15 },
+    // Game room (right half)
+    { x: 8, z: 5 }, { x: 5, z: 12 }, { x: 12, z: 16 },
+    // Stair area
+    { x: 0, z: -2 },
   ],
 };
 function randomSpawn(map) {
@@ -226,7 +244,7 @@ function startGame(game, soloRole) {
       broadcastToGame(game, { type: 'countdown', hideCountdown: game.hideCountdown });
       if (game.hideCountdown <= 0) {
         clearInterval(game.hideTimer); game.hideTimer = null;
-        game.phase = 'seeking'; game.seekCountdown = SEEK_TIME;
+        game.phase = 'seeking'; game.seekCountdown = SEEK_TIME_BY_MAP[game.selectedMap] || SEEK_TIME;
         broadcastToGame(game, { type: 'phaseChange', phase: 'seeking', seekerChances: game.seekerChances, seekCountdown: game.seekCountdown });
         startDingTimer(game);
         game.seekTimer = setInterval(() => {
