@@ -315,7 +315,7 @@ wss.on('connection', (ws) => {
     if (msg.type === 'setMap' && player.gameId) {
       const game = games.get(player.gameId);
       if (game && game.phase === 'lobby' && game.hostId === id) {
-        if (msg.map === 'home' || msg.map === 'library') {
+        if (msg.map === 'home' || msg.map === 'library' || msg.map === 'cruise') {
           game.selectedMap = msg.map;
           for (const p of gamePlayers(game)) p.ready = false;
           broadcastToGame(game, { type: 'mapChanged', map: game.selectedMap });
