@@ -9,7 +9,7 @@ const mapFile = mapName === 'library' ? './library.js'
               : mapName === 'cruise'  ? './cruise.js'
               : './room.js';
 const mapMod = await import(mapFile);
-const { ROOM_W, ROOM_D, ROOM_H, DINING_W, walls, hideables, hideableBounds, colliders, fireParts, tvGlow, roomAt: mapRoomAt, birdsEyeRoom, getFloorY: mapGetFloorY } = mapMod;
+const { ROOM_W, ROOM_D, ROOM_H, DINING_W, walls, hideables, hideableBounds, colliders, fireParts, tvGlow, roomAt: mapRoomAt, birdsEyeRoom, getFloorY: mapGetFloorY, lowerFloor, upperFloor, getPlayerFloor } = mapMod;
 const getFloorY = mapGetFloorY || ((x, z) => 0);
 
 // ========== STATE ==========
@@ -107,9 +107,13 @@ function triggerMissFor(charGroupRef, charRot) {
 }
 
 function resolveCollision(pos, radius) {
+  const charTop = pos.y + 1.85;
   for (let i = 0; i < 4; i++) {
     let hit = null;
     for (const box of colliders) {
+      // Y-aware: skip colliders that don't overlap character's Y range
+      if (box.max.y !== undefined && box.max.y <= pos.y + 0.05) continue;
+      if (box.min.y !== undefined && box.min.y >= charTop) continue;
       const cx = Math.max(box.min.x, Math.min(pos.x, box.max.x));
       const cz = Math.max(box.min.z, Math.min(pos.z, box.max.z));
       const dx = pos.x - cx, dz = pos.z - cz;
@@ -449,7 +453,17 @@ function animate() {
     resolveCollision(charPos, .4);
 
     // Apply floor height (handles multi-story maps like the cruise ship)
-    charPos.y = getFloorY(charPos.x, charPos.z);
+    // Apply floor height — getFloorY returns -1 if not in a transition zone,
+    // in which case we keep the current Y (persists floor level)
+    const floorY = getFloorY(charPos.x, charPos.z);
+    if (floorY >= 0) charPos.y = floorY;
+
+    // Toggle floor visibility (cruise ship two-story)
+    if (lowerFloor && upperFloor && getPlayerFloor) {
+      const floor = getPlayerFloor(charPos.y);
+      lowerFloor.visible = (floor === 'lower');
+      upperFloor.visible = (floor === 'upper');
+    }
 
     myChar.group.position.copy(charPos);
     myChar.group.rotation.y = charRotY;
@@ -584,7 +598,8 @@ function animate() {
   // --- REMOTE PLAYERS ---
   for (const [id, rp] of remotePlayers) {
     rp.char.group.position.lerp(rp.targetPos, 8 * dt);
-    rp.char.group.position.y = getFloorY(rp.char.group.position.x, rp.char.group.position.z);
+    const rpFloorY = getFloorY(rp.char.group.position.x, rp.char.group.position.z);
+    if (rpFloorY >= 0) rp.char.group.position.y = rpFloorY;
     const diff = rp.targetRot - rp.char.group.rotation.y;
     rp.char.group.rotation.y += diff * 8 * dt;
     const moving = rp.char.group.position.distanceTo(rp.targetPos) > .05;
