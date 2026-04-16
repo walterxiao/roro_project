@@ -96,24 +96,30 @@ for (let i = 0; i < NUM_STEPS; i++) {
   scene.add(step);
 }
 
-// Glass side panels
-const panelH = DECK_Y + 0.5;
-const panelL = new THREE.Mesh(new THREE.BoxGeometry(0.08, panelH, STAIR_D), glassRailMat);
-panelL.position.set(STAIR_X - STAIR_W / 2 + 0.15, DECK_Y / 2, STAIR_Z);
+// Glass side panels — follow the stair slope
+const panelH = 0.9; // height of the glass panel above each step
+const panelLen = Math.sqrt(STAIR_D * STAIR_D + DECK_Y * DECK_Y);
+const panelAngle = Math.atan2(DECK_Y, STAIR_D);
+const panelL = new THREE.Mesh(new THREE.BoxGeometry(0.08, panelH, panelLen), glassRailMat);
+panelL.position.set(STAIR_X - STAIR_W / 2 + 0.15, DECK_Y / 2 + 0.45, STAIR_Z);
+panelL.rotation.x = -panelAngle;
 scene.add(panelL);
-const panelR = new THREE.Mesh(new THREE.BoxGeometry(0.08, panelH, STAIR_D), glassRailMat);
-panelR.position.set(STAIR_X + STAIR_W / 2 - 0.15, DECK_Y / 2, STAIR_Z);
+const panelR = new THREE.Mesh(new THREE.BoxGeometry(0.08, panelH, panelLen), glassRailMat);
+panelR.position.set(STAIR_X + STAIR_W / 2 - 0.15, DECK_Y / 2 + 0.45, STAIR_Z);
+panelR.rotation.x = -panelAngle;
 scene.add(panelR);
 
-// Wooden handrails on top of glass panels
-const railGeo = new THREE.BoxGeometry(0.12, 0.12, STAIR_D + 0.5);
+// Wooden handrails on top of glass panels — tilted along the stair slope
+const railLen = Math.sqrt(STAIR_D * STAIR_D + DECK_Y * DECK_Y); // diagonal length
+const railAngle = Math.atan2(DECK_Y, STAIR_D); // tilt upward along Z
+const railGeo = new THREE.BoxGeometry(0.12, 0.12, railLen);
 const hRailL = new THREE.Mesh(railGeo, woodRailMat);
-hRailL.position.set(STAIR_X - STAIR_W / 2 + 0.15, DECK_Y + 0.35, STAIR_Z);
-hRailL.rotation.x = Math.atan2(DECK_Y, STAIR_D);
+hRailL.position.set(STAIR_X - STAIR_W / 2 + 0.15, DECK_Y / 2 + 0.9, STAIR_Z);
+hRailL.rotation.x = -railAngle;
 scene.add(hRailL);
 const hRailR = new THREE.Mesh(railGeo, woodRailMat);
-hRailR.position.set(STAIR_X + STAIR_W / 2 - 0.15, DECK_Y + 0.35, STAIR_Z);
-hRailR.rotation.x = Math.atan2(DECK_Y, STAIR_D);
+hRailR.position.set(STAIR_X + STAIR_W / 2 - 0.15, DECK_Y / 2 + 0.9, STAIR_Z);
+hRailR.rotation.x = -railAngle;
 scene.add(hRailR);
 
 // Green LED strip lights under each step
@@ -133,9 +139,11 @@ scene.add(stairLight);
 // ========== LOWER FLOOR FURNITURE ==========
 // --- Restaurant (west half, x < -1) ---
 // Divider wall between restaurant and game room (with doorway z=-2 to 2)
-addWall(0.2, SHIP_H, 14, 0, 2, -11, lowerFloor);
-addWall(0.2, SHIP_H, 14, 0, 2, 11, lowerFloor);
-addWall(0.2, 0.6, 4, 0, SHIP_H - 0.3, 0, lowerFloor);
+// Stops before the staircase (stair zone starts at z=6)
+addWall(0.2, SHIP_H, 14, 0, 2, -11, lowerFloor);  // z=-18 to -4
+addWall(0.2, SHIP_H, 2, 0, 2, 3, lowerFloor);      // z=2 to 4 (between doorway and staircase)
+addWall(0.2, SHIP_H, 6, 0, 2, 15, lowerFloor);     // z=12 to 18 (after staircase)
+addWall(0.2, 0.6, 4, 0, SHIP_H - 0.3, 0, lowerFloor); // doorway header
 
 function makeDinerTable(cx, cz, group) {
   const g = new THREE.Group();
@@ -298,9 +306,10 @@ const colliders = [
   { min: new THREE.Vector3(-SHIP_W/2, 0, SHIP_D/2-.3), max: new THREE.Vector3(SHIP_W/2, SHIP_H, SHIP_D/2) },
   { min: new THREE.Vector3(-SHIP_W/2, 0, -SHIP_D/2), max: new THREE.Vector3(-SHIP_W/2+.3, SHIP_H, SHIP_D/2) },
   { min: new THREE.Vector3(SHIP_W/2-.3, 0, -SHIP_D/2), max: new THREE.Vector3(SHIP_W/2, SHIP_H, SHIP_D/2) },
-  // Restaurant / game room divider (z<-2 and z>2 with doorway)
+  // Restaurant / game room divider (stops before staircase, resumes after)
   { min: new THREE.Vector3(-.1, 0, -SHIP_D/2), max: new THREE.Vector3(.1, SHIP_H, -2) },
-  { min: new THREE.Vector3(-.1, 0, 2), max: new THREE.Vector3(.1, SHIP_H, 6) },
+  { min: new THREE.Vector3(-.1, 0, 2), max: new THREE.Vector3(.1, SHIP_H, 4) },
+  { min: new THREE.Vector3(-.1, 0, 12), max: new THREE.Vector3(.1, SHIP_H, SHIP_D/2) },
   // Upper deck railings
   { min: new THREE.Vector3(-SHIP_W/2, DECK_Y, -SHIP_D/2), max: new THREE.Vector3(SHIP_W/2, DECK_Y+1, -SHIP_D/2+.3) },
   { min: new THREE.Vector3(-SHIP_W/2, DECK_Y, SHIP_D/2-.3), max: new THREE.Vector3(SHIP_W/2, DECK_Y+1, SHIP_D/2) },
