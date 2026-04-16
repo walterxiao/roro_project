@@ -248,11 +248,43 @@ tubWater.position.y = 0.62; hotTub.add(tubWater);
 hotTub.position.set(10, DECK_Y, 6); upperFloor.add(hotTub);
 
 const slide = new THREE.Group();
-const slideChute = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.15, 5), mat(0x33aaff));
-slideChute.position.set(0, 2.5, 0); slideChute.rotation.x = 0.4; slideChute.castShadow = true; slide.add(slideChute);
-const slideTower = new THREE.Mesh(new THREE.BoxGeometry(1.6, 3.5, 1.4), mat(0xcccccc));
-slideTower.position.set(0, 1.75, 1.7); slideTower.castShadow = true; slide.add(slideTower);
-slide.position.set(-11, DECK_Y, -12); upperFloor.add(slide);
+const slideMat = mat(0x2299ff);
+const slidePlatMat = mat(0xdddddd);
+// Tower platform at the top
+const slidePlatform = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.2, 12), slidePlatMat);
+slidePlatform.position.set(0, 3.5, 0); slidePlatform.castShadow = true; slide.add(slidePlatform);
+// Tower legs (4 poles)
+for (const [lx, lz] of [[-0.7,-0.7],[0.7,-0.7],[-0.7,0.7],[0.7,0.7]]) {
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3.5, 8), mat(0x888888));
+  pole.position.set(lx, 1.75, lz); slide.add(pole);
+}
+// Chute — angled from platform down to ground, with raised side walls
+const chuteLen = 5;
+const chuteAngle = Math.atan2(3.4, chuteLen);
+// Bottom surface
+const chuteBottom = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, chuteLen), slideMat);
+chuteBottom.position.set(0, 1.75, -2.8); chuteBottom.rotation.x = chuteAngle; chuteBottom.castShadow = true; slide.add(chuteBottom);
+// Left wall
+const chuteWallL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.35, chuteLen), slideMat);
+chuteWallL.position.set(-0.6, 1.9, -2.8); chuteWallL.rotation.x = chuteAngle; slide.add(chuteWallL);
+// Right wall
+const chuteWallR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.35, chuteLen), slideMat);
+chuteWallR.position.set(0.6, 1.9, -2.8); chuteWallR.rotation.x = chuteAngle; slide.add(chuteWallR);
+// Ladder (back of tower)
+const ladderMat = mat(0x666666);
+const ladderL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 3.2, 0.06), ladderMat);
+ladderL.position.set(-0.35, 1.7, 1.1); slide.add(ladderL);
+const ladderR = new THREE.Mesh(new THREE.BoxGeometry(0.06, 3.2, 0.06), ladderMat);
+ladderR.position.set(0.35, 1.7, 1.1); slide.add(ladderR);
+for (let r = 0; r < 7; r++) {
+  const rung = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.06), ladderMat);
+  rung.position.set(0, 0.4 + r * 0.45, 1.1); slide.add(rung);
+}
+// Splash pad at the bottom
+const splash = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.05, 12),
+  new THREE.MeshStandardMaterial({ color: 0x55bbee, transparent: true, opacity: 0.5 }));
+splash.position.set(0, 0.03, -5); slide.add(splash);
+slide.position.set(-11, DECK_Y, -10); upperFloor.add(slide);
 
 function makeBeachChair(cx, cz) {
   const g = new THREE.Group();
