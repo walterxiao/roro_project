@@ -46,15 +46,15 @@ const SPAWNS_BY_MAP = {
     { x: 17, z: -5 }, { x: 24, z: 4 }, { x: 21, z: 0 },
   ],
   cruise: [
-    // Pool deck (upper area, z negative)
-    { x: -10, z: -22 }, { x: 0, z: -20 }, { x: 10, z: -22 },
-    { x: -8, z: -15 }, { x: 8, z: -15 }, { x: 0, z: -10 },
-    { x: -12, z: -8 }, { x: 12, z: -8 },
-    // Lower indoor (z positive)
-    // Restaurant (left half)
-    { x: -10, z: 5 }, { x: -5, z: 10 }, { x: -10, z: 15 },
-    // Game room (right half)
-    { x: 8, z: 5 }, { x: 5, z: 12 }, { x: 12, z: 16 },
+    // All on lower floor (y=0) — ship footprint x=[-15,15], z=[-18,18]
+    // Restaurant (west half)
+    { x: -9, z: -8 }, { x: -5, z: 5 }, { x: -10, z: 15 },
+    { x: -12, z: -2 }, { x: -8, z: -14 },
+    // Game room (east half)
+    { x: 8, z: -6 }, { x: 5, z: 6 }, { x: 12, z: 14 },
+    { x: 12, z: -2 }, { x: 8, z: -14 },
+    // Center
+    { x: 0, z: -10 }, { x: 0, z: 15 }, { x: -6, z: 0 }, { x: 6, z: 0 },
     // Stair area
     { x: 0, z: -2 },
   ],
