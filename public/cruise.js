@@ -38,8 +38,15 @@ addWall(0.2, SHIP_H, SHIP_D, -SHIP_W / 2, 2, 0, lowerFloor);
 addWall(0.2, SHIP_H, SHIP_D, SHIP_W / 2, 2, 0, lowerFloor);
 
 // ========== UPPER FLOOR (y=4) — Pool Deck ==========
-const uFloor = new THREE.Mesh(new THREE.BoxGeometry(SHIP_W, 0.2, SHIP_D), deckMat);
-uFloor.position.set(0, DECK_Y - 0.1, 0); uFloor.receiveShadow = true; upperFloor.add(uFloor);
+// Upper floor with hole for staircase opening (x=[-3.5,3.5], z=[6,12])
+function addDeckFloor(w, d, x, z) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.2, d), deckMat);
+  m.position.set(x, DECK_Y - 0.1, z); m.receiveShadow = true; upperFloor.add(m);
+}
+addDeckFloor(11.5, SHIP_D, -9.25, 0);   // left of opening
+addDeckFloor(11.5, SHIP_D, 9.25, 0);    // right of opening
+addDeckFloor(7, 24, 0, -6);             // front of opening (z < 6)
+addDeckFloor(7, 6, 0, 15);              // back of opening (z > 12)
 
 // Upper deck railings (low, open air)
 const RAIL_H = 1.0;
