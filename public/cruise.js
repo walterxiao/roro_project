@@ -91,11 +91,6 @@ for (let i = 0; i < NUM_STEPS; i++) {
   step.castShadow = true;
   scene.add(step);
 }
-// Semi-circular bottom step
-const bottomStep = new THREE.Mesh(new THREE.CylinderGeometry(STAIR_W / 2, STAIR_W / 2, 0.12, 16, 1, false, 0, Math.PI), glassMat);
-bottomStep.position.set(STAIR_X, 0.06, STAIR_Z - STAIR_D / 2);
-bottomStep.rotation.y = Math.PI;
-scene.add(bottomStep);
 
 // Glass side panels
 const panelH = DECK_Y + 0.5;
