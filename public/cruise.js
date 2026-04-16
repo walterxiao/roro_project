@@ -36,9 +36,6 @@ addWall(SHIP_W, SHIP_H, 0.2, 0, 2, -SHIP_D / 2, lowerFloor);
 addWall(SHIP_W, SHIP_H, 0.2, 0, 2, SHIP_D / 2, lowerFloor);
 addWall(0.2, SHIP_H, SHIP_D, -SHIP_W / 2, 2, 0, lowerFloor);
 addWall(0.2, SHIP_H, SHIP_D, SHIP_W / 2, 2, 0, lowerFloor);
-// Ceiling (serves as upper floor's base — visible from below)
-const lCeiling = new THREE.Mesh(new THREE.BoxGeometry(SHIP_W, 0.15, SHIP_D), mat(0xeeeeee));
-lCeiling.position.set(0, SHIP_H, 0); lowerFloor.add(lCeiling);
 
 // ========== UPPER FLOOR (y=4) — Pool Deck ==========
 const uFloor = new THREE.Mesh(new THREE.BoxGeometry(SHIP_W, 0.2, SHIP_D), deckMat);
