@@ -206,7 +206,7 @@ function startDingTimer(game) {
         broadcastToGame(game, { type: 'ding', pos: hider.pos, name: hider.name });
       }, i * 500);
     });
-  }, 15000);
+  }, 5000);
 }
 
 function startGame(game, soloRole) {
