@@ -352,7 +352,7 @@ wss.on('connection', (ws) => {
       const game = games.get(player.gameId);
       if (game && player.role === 'hider' && (game.phase === 'hiding' || game.phase === 'seeking') && !player.isFound) {
         player.isHiding = true; player.hiddenFurniture = msg.furnitureIndex; player.hiddenBounds = msg.bounds || null;
-        const amplitude = 0.005 + Math.random() * 0.015;
+        const amplitude = 0.002 + Math.random() * 0.006;
         player.shakeAmp = amplitude;
         broadcastToGame(game, { type: 'playerHid', id, furnitureIndex: msg.furnitureIndex, amplitude });
       }

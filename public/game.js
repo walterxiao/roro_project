@@ -211,7 +211,7 @@ setOnMessage((msg) => {
     if (rp) { rp.char.group.visible = false; rp.hiddenFi = msg.furnitureIndex; }
     hiddenHiderFurniture.set(msg.id, msg.furnitureIndex);
     // Start continuous shake with the server-assigned amplitude
-    const amp = (typeof msg.amplitude === 'number') ? msg.amplitude : (0.005 + Math.random() * 0.015);
+    const amp = (typeof msg.amplitude === 'number') ? msg.amplitude : (0.002 + Math.random() * 0.006);
     shaking.set(msg.furnitureIndex, { amp, phase: Math.random() * 1000 });
   }
 
